@@ -13,6 +13,7 @@ import java.security.cert.CertificateEncodingException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
@@ -47,11 +48,13 @@ import org.ejbca.core.ejb.ra.CouldNotRemoveEndEntityException;
 import org.ejbca.core.ejb.ra.NoSuchEndEntityException;
 import org.ejbca.core.model.approval.ApprovalException;
 import org.ejbca.core.model.approval.WaitingForApprovalException;
+import org.ejbca.core.model.authorization.AccessRulesConstants;
 import org.ejbca.core.model.era.RaEndEntitySearchRequest;
 import org.ejbca.core.model.era.RaEndEntitySearchResponse;
 import org.ejbca.core.model.era.RaMasterApiProxyBeanLocal;
 import org.ejbca.core.model.ra.AlreadyRevokedException;
 import org.ejbca.core.model.ra.CustomFieldException;
+import org.ejbca.core.model.ra.raadmin.EndEntityProfile;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfileValidationException;
 import org.ejbca.ui.web.rest.api.exception.RestException;
 import org.ejbca.ui.web.rest.api.io.request.AddEndEntityRestRequest;
@@ -76,7 +79,6 @@ public class EndEntityRestResource extends BaseRestResource {
 
     @EJB
     private RaMasterApiProxyBeanLocal raMasterApiProxy;
-    
     private static final Logger log = Logger.getLogger(EndEntityRestResource.class);
 
     @GET
@@ -130,11 +132,12 @@ public class EndEntityRestResource extends BaseRestResource {
                     "Invalid request, unknown CA."
             );
         }
-        
+
         EndEntityInformation endEntityInformation = AddEndEntityRestRequest.converter().toEntity(request, caId, endEntityProfileId, certificateProfileId);
-        
+        final boolean isClearPwd = isBatchGeneration(admin, endEntityProfileId, AccessRulesConstants.CREATE_END_ENTITY);
+
         try {
-        	raMasterApiProxy.addUser(admin, endEntityInformation, false);
+        	raMasterApiProxy.addUser(admin, endEntityInformation, isClearPwd);
         } catch (EjbcaException e) {
             int errorStatusCode = Response.Status.BAD_REQUEST.getStatusCode();
         	ErrorCode errorCode = EjbcaException.getErrorCode(e);
@@ -214,7 +217,7 @@ public class EndEntityRestResource extends BaseRestResource {
         EndEntityInformation endEntityInformation = raMasterApiProxy.searchUser(admin, endEntityName);
         if (endEntityInformation == null) {
             if (log.isDebugEnabled()) {
-                log.debug("Could not find  End Entity for the username='" + endEntityName + "'");
+                log.debug("Could not find end entity for the username '" + endEntityName + "'");
             }
             throw new NoSuchEndEntityException("Could not find  End Entity for the username='" + endEntityName + "'");
         } else {
@@ -228,9 +231,12 @@ public class EndEntityRestResource extends BaseRestResource {
         	if (request.getPassword() != null) {
         		endEntityInformation.setPassword(request.getPassword());
         	}
-        	boolean result = raMasterApiProxy.editUser(admin, endEntityInformation, false);
+
+            final boolean isClearPwd = isBatchGeneration(admin, endEntityInformation.getEndEntityProfileId(),AccessRulesConstants.EDIT_END_ENTITY);
+
+        	boolean result = raMasterApiProxy.editUser(admin, endEntityInformation, isClearPwd, null);
         	if (result) {
-        		log.info("End entity '" + endEntityName + "' successfuly edited by administrator " + admin.toString());
+        		log.info("End entity '" + endEntityName + "' successfully edited by administrator " + admin.toString());
             } else {
             	log.info("Error during end entity '" + endEntityName + "' edit by administrator " + admin.toString() +
             			" . Edit operation failed");
@@ -395,5 +401,21 @@ public class EndEntityRestResource extends BaseRestResource {
        }
        return null;
    }
+
+    /**
+     * Check if batch generation should be used to add/edit entity using given End Entity Profile.
+     *
+     * @param admin Authentication token
+     * @param endEntityProfileId End Entity Profile ID
+     * @param accessRule Access Rule
+     * @return Batch generation
+     */
+    private boolean isBatchGeneration(final AuthenticationToken admin, final int endEntityProfileId, final String accessRule) {
+       Optional<EndEntityProfile> endEntityProfile = Optional.ofNullable(raMasterApiProxy.getAuthorizedEndEntityProfiles(admin, accessRule)
+                                                                                         .getValue(endEntityProfileId));
+
+       return endEntityProfile.map(profile -> profile.isClearTextPasswordUsed() && profile.isClearTextPasswordDefault())
+                              .orElse(false);
+    }
 
 }
