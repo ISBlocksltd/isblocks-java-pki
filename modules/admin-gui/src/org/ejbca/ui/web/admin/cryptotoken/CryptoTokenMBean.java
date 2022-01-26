@@ -54,6 +54,7 @@ import org.cesecore.keybind.InternalKeyBindingMgmtSessionLocal;
 import org.cesecore.keybind.impl.AuthenticationKeyBinding;
 import org.cesecore.keys.token.AvailableCryptoToken;
 import org.cesecore.keys.token.AzureCryptoToken;
+import org.cesecore.keys.token.ISBCryptoToken;
 import org.cesecore.keys.token.BaseCryptoToken;
 import org.cesecore.keys.token.CryptoToken;
 import org.cesecore.keys.token.CryptoTokenAuthenticationFailedException;
@@ -291,6 +292,12 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         private String keyVaultClientID = "";
         private boolean keyVaultUseKeyBinding = false;
         private String keyVaultKeyBinding = "";
+        private String ISBType = "premium";
+        private String ISBName = "ejbca-keyvault";
+        private String ISBClientID = "";
+        private boolean ISBUseKeyBinding = false;
+        private String ISBKeyBinding = "";
+        
         private String awsKMSRegion = "us-east-1"; // default value
         private String awsKMSAccessKeyID = ""; // default value
 
@@ -392,6 +399,18 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public void setKeyVaultClientID(String keyVaultClientID) {
             this.keyVaultClientID = keyVaultClientID;
         }
+        
+        public void setISBType(String ISBType) {
+            this.ISBType = ISBType;
+        }
+
+        public void setISBName(String ISBName) {
+            this.ISBName = ISBName;
+        }
+
+        public void setISBClientID(String ISBClientID) {
+            this.ISBClientID = ISBClientID;
+        }
 
         public String getAWSKMSRegion() {
             return awsKMSRegion;
@@ -477,7 +496,18 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public String getKeyVaultClientID() {
             return keyVaultClientID;
         }
+        
+        public String getISBType() {
+            return ISBType;
+        }
 
+        public String getISBName() {
+            return ISBName;
+        }
+
+        public String getISBClientID() {
+            return ISBClientID;
+        }
         public boolean isShowSoftCryptoToken() {
             return SoftCryptoToken.class.getSimpleName().equals(getType());
         }
@@ -1122,12 +1152,12 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                 String isbName = getCurrentCryptoToken().getISBName().trim();
                 String isbClientID = getCurrentCryptoToken().getISBClientID().trim();
                 boolean isbUseKeyBinding = getCurrentCryptoToken().isKeyVaultUseKeyBinding();
-                String vaultKeyBinding = getCurrentCryptoToken().getKeyVaultKeyBinding();
-                properties.setProperty(ISBCryptoToken.KEY_VAULT_TYPE, isbType);
-                properties.setProperty(ISBCryptoToken.KEY_VAULT_NAME, isbName);
-                properties.setProperty(ISBCryptoToken.KEY_VAULT_CLIENTID, isbClientID);
-                properties.setProperty(ISBCryptoToken.KEY_VAULT_USE_KEY_BINDING, Boolean.toString(isbUseKeyBinding));
-                properties.setProperty(ISBCryptoToken.KEY_VAULT_KEY_BINDING, isbKeyBinding);
+                String isbKeyBinding = getCurrentCryptoToken().getKeyVaultKeyBinding();
+                properties.setProperty(ISBCryptoToken.ISB_TYPE, isbType);
+                properties.setProperty(ISBCryptoToken.ISB_NAME, isbName);
+                properties.setProperty(ISBCryptoToken.ISB_CLIENTID, isbClientID);
+                properties.setProperty(ISBCryptoToken.ISB_USE_KEY_BINDING, Boolean.toString(isbUseKeyBinding));
+                properties.setProperty(ISBCryptoToken.ISB_KEY_BINDING, isbKeyBinding);
             } 
             else if (CryptoTokenFactory.AWSKMS_SIMPLE_NAME.equals(getCurrentCryptoToken().getType())) {
                 className = CryptoTokenFactory.AWSKMS_NAME;

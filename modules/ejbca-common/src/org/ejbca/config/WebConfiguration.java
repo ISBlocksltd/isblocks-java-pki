@@ -335,6 +335,11 @@ public class WebConfiguration {
     public static boolean isAzureKeyVaultEnabled(){
         return Boolean.valueOf(EjbcaConfigurationHolder.getString("keyvault.cryptotoken.enabled"));
     }
+    
+    /** @return true if we have Azure Crypto Token enabled in the Admin GUI. */
+    public static boolean isISBEnabled(){
+        return Boolean.valueOf(EjbcaConfigurationHolder.getString("isb.cryptotoken.enabled"));
+    }
 
     /** @return true if we have AWS KMS Crypto Token enabled in the Admin GUI. */
     public static boolean isAWSKMSEnabled(){

@@ -135,7 +135,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * Key Vault Type is the "pricing tier" as it says when creating an Azure Key Vault, it is also called SKU_TYPE somewhere else.
      * It can be either standard or premium, which translates to key types RSA/EC and RSA-HSM/EC-HSM, where the -HSM types are non-extractable HSM backed.
      */
-    public static final String KEY_VAULT_TYPE = "keyVaultType";
+    public static final String ISB_TYPE = "keyVaultType";
 
     /** Property for storing the key vault name in the crypto token properties.
      * Azure Key Vault name, key vault specific, this is the string that will be part of the REST call URI
@@ -146,7 +146,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      *   Resulting URL: https://" + KEY_VAULT_NAME + ".vault.azure.net/
      * 
      */
-    public static final String KEY_VAULT_NAME = "keyVaultName";
+    public static final String ISB_NAME = "keyVaultName";
 
     /** Property for storing the client_id used to access the key vault, in the crypto token properties.
      * Azure Key Vault client_id, key vault specific, this is the "AD user" that is authorized to connect to and use the key vault
@@ -155,17 +155,17 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * In the same location is your Tenant ID
      * It is recommended by MS that we should use client certificate authentication instead of id/secret. You get the id/secret or client certificate from AD.
      */
-    public static final String KEY_VAULT_CLIENTID = "keyVaultClientID";
+    public static final String ISB_CLIENTID = "keyVaultClientID";
 
     /**
      * Property for storing whether we will use app secret or an internal key binding when authenticating to Azure.
      */
-    public static final String KEY_VAULT_USE_KEY_BINDING = "keyVaultUseKeyBinding";
+    public static final String ISB_USE_KEY_BINDING = "keyVaultUseKeyBinding";
 
     /**
      * Named key binding to use when authenticating to Azure
      */
-    public static final String KEY_VAULT_KEY_BINDING = "keyVaultKeyBinding";
+    public static final String ISB_KEY_BINDING = "keyVaultKeyBinding";
 
     /** Cache for key aliases, to speed things up so we don't have to make multiple REST calls all the time to list aliases and public keys
      * We cache for a short time, 60 seconds to speed up GUI operations, but still allow for key generation on different nodes in a cluster, just leaving the 
@@ -200,22 +200,22 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     /** get the keyVaultName, set during init of crypto token */
     private String getKeyVaultName() {
-        return getProperties().getProperty(ISBCryptoToken.KEY_VAULT_NAME);
+        return getProperties().getProperty(ISBCryptoToken.ISB_NAME);
     }
 
     /** get the keyVaultType, set during init of crypto token */
     private String getKeyVaultType() {
-        return getProperties().getProperty(ISBCryptoToken.KEY_VAULT_TYPE);
+        return getProperties().getProperty(ISBCryptoToken.ISB_TYPE);
     }
 
     /** get the keyVaultType, set during init of crypto token */
     private boolean isKeyVaultUseKeyBinding() {
-        return Boolean.parseBoolean(getProperties().getProperty(ISBCryptoToken.KEY_VAULT_USE_KEY_BINDING, "false"));
+        return Boolean.parseBoolean(getProperties().getProperty(ISBCryptoToken.ISB_USE_KEY_BINDING, "false"));
     }
 
     /** get the keyVaultType, set during init of crypto token */
     private int getKeyVaultKeyBinding() {
-        return Integer.parseInt(getProperties().getProperty(ISBCryptoToken.KEY_VAULT_KEY_BINDING, "-1"));
+        return Integer.parseInt(getProperties().getProperty(ISBCryptoToken.ISB_KEY_BINDING, "-1"));
     }
 
     /** Construct a provider name for this instance of the crypto token. Make the name "AzureKeyVaultProvider-cryptoTokenID",
@@ -272,14 +272,14 @@ public class ISBCryptoToken extends BaseCryptoToken {
         log.info("Initializing Azure Key Vault: Name=" + getKeyVaultName() + ", type=" + getKeyVaultType());
         init(properties, false, id);
 
-        final String keyVaultName = properties.getProperty(ISBCryptoToken.KEY_VAULT_NAME);
+        final String keyVaultName = properties.getProperty(ISBCryptoToken.ISB_NAME);
         if (keyVaultName == null) {
             throw new NoSuchSlotException("No key vault Name defined for crypto token");
         }
         // Check that key vault name does not have any bad characters, should follow the same regexp as aliases, except also allow dots
         checkVaultName(keyVaultName);
-        clientID = properties.getProperty(ISBCryptoToken.KEY_VAULT_CLIENTID);
-        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.KEY_VAULT_TYPE) + ", Name=" + keyVaultName
+        clientID = properties.getProperty(ISBCryptoToken.ISB_CLIENTID);
+        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_TYPE) + ", Name=" + keyVaultName
                 + ", clientID=" + clientID);
 
         // Install the Azure key vault signature provider for this crypto token
@@ -895,7 +895,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 throw new CryptoTokenAuthenticationFailedException("Unable to create signed assertion for Azure authentication", e);
             }
         }
-        parameters.add(new BasicNameValuePair("resource", oauthResource));
+        //parameters.add(new BasicNameValuePair("resource", oauthResource));
         request.setEntity(new UrlEncodedFormEntity(parameters));
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
