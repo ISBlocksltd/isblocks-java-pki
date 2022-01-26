@@ -308,6 +308,122 @@
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
                 </h:panelGroup>
 
+<!-- Begin IS Blocks Mods -->
+ <h:panelGroup id="currentCryptoTokenISBTypePanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenISBTypeLabel"
+                        for="currentCryptoTokenISBType"
+                        value="#{web.text.CRYPTOTOKEN_ISB_TYPE} " />
+                    <h:outputText id="currentCryptoTokenISBType" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
+                </h:panelGroup>
+                <h:panelGroup
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+
+                    <h:selectOneMenu
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBType}"
+                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
+                        disabled="#{!cryptoTokenMBean.allowedToModify}">
+                        <f:selectItem
+                            itemValue="standard"
+                            itemLabel="Standard"/>
+                        <f:selectItem
+                            itemValue="premium"
+                            itemLabel="Premium"/>
+                    </h:selectOneMenu>
+                    <h:outputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBType}"
+                        rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
+                </h:panelGroup>
+
+                <h:panelGroup id="currentCryptoTokenKeyVaultNamePanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenKeyVaultNameLabel"
+                        for="currentCryptoTokenKeyVaultName"
+                        value="#{web.text.CRYPTOTOKEN_ISB_NAME} " />
+                    <h:outputText id="currentCryptoTokenKeyVaultName" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
+                </h:panelGroup>
+                <h:panelGroup
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:inputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBName}"
+                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
+                        disabled="#{!cryptoTokenMBean.allowedToModify}" />
+                    <h:outputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBName}"
+                        rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
+                </h:panelGroup>
+
+                <h:panelGroup id="currentCryptoTokenKeyVaultClientIDPanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenKeyVaultClientIDLabel"
+                        for="currentCryptoTokenISBClientID"
+                        value="#{web.text.CRYPTOTOKEN_ISB_CLIENTID} " />
+                    <h:outputText id="currentCryptoTokenKeyVaultClientID" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
+                </h:panelGroup>
+                <h:panelGroup
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:inputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBClientID}"
+                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
+                        disabled="#{!cryptoTokenMBean.allowedToModify}" />
+                    <h:outputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBClientID}"
+                        rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
+                </h:panelGroup>
+                
+                <h:panelGroup id="currentCryptoTokenISBUseKeyBindingPanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenKeyVaultUseKeyBindingLabel"
+                        for="currentCryptoTokenISBUseKeyBinding"
+                        value="#{web.text.CRYPTOTOKEN_ISB_USE_BINDING} " />
+                    <h:outputText id="currentCryptoTokenKeyVaultUseKeyBinding" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
+                </h:panelGroup>
+                <h:panelGroup
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    
+                    <h:selectBooleanCheckbox
+						id="currentCryptoTokenISBUseKeyBindingCheckbox"
+						value="#{cryptoTokenMBean.currentCryptoToken.ISBUseKeyBinding}"
+						disabled="#{!cryptoTokenMBean.currentCryptoTokenEditMode}">
+						<f:ajax render="currentCryptoTokenForm:currentCryptoTokenKeyVaultKeyBindingPanelGroup 
+										currentCryptoTokenForm:currentCryptoTokenKeyVaultKeyBindingValuesPanelGroup
+										currentCryptoTokenForm:currentCryptoTokenSecret1Label
+										currentCryptoTokenForm:currentCryptoTokenSecret1
+										currentCryptoTokenForm:currentCryptoTokenSecret2Label
+										currentCryptoTokenForm:currentCryptoTokenSecret2"/>
+					</h:selectBooleanCheckbox>
+					<h:outputLabel for="currentCryptoTokenISBUseKeyBindingCheckbox"
+						value="#{web.text.USE}"
+						rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}" />
+                </h:panelGroup>
+
+                <h:panelGroup id="currentCryptoTokenISBeyBindingPanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenKeyVaultKeyBindingLabel"
+                        for="currentCryptoTokenKeyVaultKeyBinding"
+                        value="#{web.text.CRYPTOTOKEN_ISB_BINDING} "
+                        rendered="#{cryptoTokenMBean.currentCryptoToken.ISBUseKeyBinding}" />
+                    <h:outputText id="currentCryptoTokenKeyISBKeyBinding"
+                    	value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}"
+                    	escape="false"
+                    	rendered="#{cryptoTokenMBean.currentCryptoToken.keyVaultUseKeyBinding}" />
+                </h:panelGroup>
+                <h:panelGroup
+                	id="currentCryptoTokenKeyVaultKeyBindingValuesPanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
+
+                    <h:selectOneMenu
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBKeyBinding}"
+                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode and cryptoTokenMBean.currentCryptoToken.ISBUseKeyBinding}"
+                        disabled="#{!cryptoTokenMBean.allowedToModify}">
+                        <f:selectItems value="#{cryptoTokenMBean.internalKeyBindings}"/>
+                    </h:selectOneMenu>
+                    <h:outputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.ISBKeyBindingName}"
+                        rendered="#{not cryptoTokenMBean.currentCryptoTokenEditMode and cryptoTokenMBean.currentCryptoToken.ISBUseKeyBinding}"/>
+                </h:panelGroup>
+
+				<!-- End IS Blocks Mods-->
                 <h:panelGroup id="currentCryptoTokenKeyVaultTypePanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showAzureCryptoToken}">
                     <h:outputLabel id="currentCryptoTokenKeyVaultTypeLabel"

@@ -199,6 +199,27 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
             }
             return authenticationCode;
         }
+        
+        
+        //ISB Crypto Token
+        public String getISBType() {
+            return cryptoTokenInfo.getISBType();
+        }
+
+        public String getISBName() {
+            return cryptoTokenInfo.getISBName();
+        }
+
+        public String getISBClientID() {
+            return cryptoTokenInfo.getISBClientID();
+        }
+
+        public String getISBAuthenticationCode() {
+            if (!requiresSecretToActivate) {
+                return ISBCryptoToken.DUMMY_ACTIVATION_CODE;
+            }
+            return authenticationCode;
+        }
 
         public void setAuthenticationCode(String authenticationCode) {
             this.authenticationCode = authenticationCode;
@@ -227,6 +248,9 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
 
         public boolean isAzureType() {
             return AzureCryptoToken.class.getSimpleName().equals(cryptoTokenInfo.getType());
+        }
+        public boolean isISBType() {
+            return ISBCryptoToken.class.getSimpleName().equals(cryptoTokenInfo.getType());
         }
         public boolean isAWSKMSType() {
             return CryptoTokenFactory.AWSKMS_SIMPLE_NAME.equals(cryptoTokenInfo.getType());
@@ -470,6 +494,10 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public boolean isShowAzureCryptoToken() {
             return AzureCryptoToken.class.getSimpleName().equals(getType());
         }
+        
+        public boolean isShowISBCryptoToken() {
+            return ISBCryptoToken.class.getSimpleName().equals(getType());
+        }
 
         public boolean isShowAWSKMSCryptoToken() {
             return CryptoTokenFactory.AWSKMS_SIMPLE_NAME.equals(getType());
@@ -506,6 +534,31 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
 
         public void setKeyVaultKeyBinding(String keyVaultKeyBinding) {
             this.keyVaultKeyBinding = keyVaultKeyBinding;
+        }
+        
+        //ISB
+        public boolean isISBUseKeyBinding() {
+            return ISBUseKeyBinding;
+        }
+
+        public void setISBUseKeyBinding(boolean keyVaultUseKeyBinding) {
+            this.ISBUseKeyBinding = keyVaultUseKeyBinding;
+        }
+
+        public String getISBKeyBinding() {
+            return ISBKeyBinding;
+        }
+
+        public String getISBKeyBindingName() {
+            for (SelectItem binding : getInternalKeyBindings()) {
+                if (binding.getValue().toString().equals(ISBKeyBinding))
+                    return binding.getLabel();
+            }
+            return "binding " + keyVaultKeyBinding + " not found";
+        }
+
+        public void setISBKeyBinding(String ISBKeyBinding) {
+            this.ISBKeyBinding = ISBKeyBinding;
         }
     }
 
@@ -1063,7 +1116,20 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                 properties.setProperty(AzureCryptoToken.KEY_VAULT_CLIENTID, vaultClientID);
                 properties.setProperty(AzureCryptoToken.KEY_VAULT_USE_KEY_BINDING, Boolean.toString(vaultUseKeyBinding));
                 properties.setProperty(AzureCryptoToken.KEY_VAULT_KEY_BINDING, vaultKeyBinding);
-            } else if (CryptoTokenFactory.AWSKMS_SIMPLE_NAME.equals(getCurrentCryptoToken().getType())) {
+            }else if (ISBCryptoToken.class.getSimpleName().equals(getCurrentCryptoToken().getType())) {
+                className = ISBCryptoToken.class.getName();
+                String isbType = getCurrentCryptoToken().getISBType().trim();
+                String isbName = getCurrentCryptoToken().getISBName().trim();
+                String isbClientID = getCurrentCryptoToken().getISBClientID().trim();
+                boolean isbUseKeyBinding = getCurrentCryptoToken().isKeyVaultUseKeyBinding();
+                String vaultKeyBinding = getCurrentCryptoToken().getKeyVaultKeyBinding();
+                properties.setProperty(ISBCryptoToken.KEY_VAULT_TYPE, isbType);
+                properties.setProperty(ISBCryptoToken.KEY_VAULT_NAME, isbName);
+                properties.setProperty(ISBCryptoToken.KEY_VAULT_CLIENTID, isbClientID);
+                properties.setProperty(ISBCryptoToken.KEY_VAULT_USE_KEY_BINDING, Boolean.toString(isbUseKeyBinding));
+                properties.setProperty(ISBCryptoToken.KEY_VAULT_KEY_BINDING, isbKeyBinding);
+            } 
+            else if (CryptoTokenFactory.AWSKMS_SIMPLE_NAME.equals(getCurrentCryptoToken().getType())) {
                 className = CryptoTokenFactory.AWSKMS_NAME;
                 String region = getCurrentCryptoToken().getAWSKMSRegion().trim();
                 String keyid = getCurrentCryptoToken().getAWSKMSAccessKeyID().trim();
@@ -1278,6 +1344,15 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                     continue;
                 }
             }
+            if (availableCryptoToken.getClassPath().equals(ISBCryptoToken.class.getName())) {
+                // Never expose the AzureCryptoToken when creating new tokens if it is not enabled in web.properties
+                if (!WebConfiguration.isISBEnabled()) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("ISB Crypto Token support is not enabled in GUI. See web.properties for enabling ISB Key Vault.");
+                    }
+                    continue;
+                }
+            }
             if (availableCryptoToken.getClassPath().equals(CryptoTokenFactory.AWSKMS_NAME)) {
                 // Never expose the AWSKMSCryptoToken when creating new tokens if it is not enabled in web.properties
                 if (!WebConfiguration.isAWSKMSEnabled()) {
@@ -1369,6 +1444,13 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                     currentCryptoToken.setKeyVaultClientID(cryptoTokenInfo.getKeyVaultClientID());
                     currentCryptoToken.setKeyVaultUseKeyBinding(cryptoTokenInfo.isKeyVaultUseKeyBinding());
                     currentCryptoToken.setKeyVaultKeyBinding(cryptoTokenInfo.getKeyVaultKeyBinding());
+                }
+                if (cryptoTokenInfo.getType().equals(ISBCryptoToken.class.getSimpleName())) {
+                    currentCryptoToken.setISBType(cryptoTokenInfo.getISBType());
+                    currentCryptoToken.setISBName(cryptoTokenInfo.getISBName());
+                    currentCryptoToken.setISBClientID(cryptoTokenInfo.getISBClientID());
+                    currentCryptoToken.setISBUseKeyBinding(cryptoTokenInfo.isISBUseKeyBinding());
+                    currentCryptoToken.setISBKeyBinding(cryptoTokenInfo.getISBKeyBinding());
                 }
                 if (cryptoTokenInfo.getType().equals(CryptoTokenFactory.AWSKMS_SIMPLE_NAME)) {
                     currentCryptoToken.setAWSKMSRegion(cryptoTokenInfo.getAWSKMSRegion());

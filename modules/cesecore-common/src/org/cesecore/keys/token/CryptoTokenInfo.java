@@ -116,6 +116,25 @@ public class CryptoTokenInfo implements Named, Serializable {
     public String getKeyVaultKeyBinding() {
         return cryptoTokenProperties.getProperty(AzureCryptoToken.KEY_VAULT_KEY_BINDING);        
     }
+
+
+    //ISBlocks Key Manager Properties
+    public String getISBType() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_TYPE);        
+    }
+    public String getISBName() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_NAME);        
+    }
+    public String getISBClientID() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_CLIENTID);        
+    }
+    public boolean isISBUseKeyBinding() {
+        return Boolean.parseBoolean(cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_USE_KEY_BINDING, "false"));        
+    }
+    public String getISBKeyBinding() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_KEY_BINDING);        
+    }
+    
     public String getAWSKMSRegion() {
         return cryptoTokenProperties.getProperty(CryptoTokenConstants.AWSKMS_REGION);        
     }

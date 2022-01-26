@@ -61,6 +61,7 @@ public class CryptoTokenFactory {
             instance.addAvailableCryptoToken(SoftCryptoToken.class.getName(), "SOFT", true, true);
             instance.addAvailableCryptoToken(NullCryptoToken.class.getName(), "Null", false, false);
             instance.addAvailableCryptoToken(AzureCryptoToken.class.getName(), "Azure Key Vault", false, true);
+            instance.addAvailableCryptoToken(ISBCryptoToken.class.getName(), "ISB Key Manager", true, true);
             // Enterprise only. May not be available don't reference class.
             instance.addAvailableCryptoToken(AWSKMS_NAME, "AWS KMS", false, true);
             // Enterprise only. May not be available don't reference class.
