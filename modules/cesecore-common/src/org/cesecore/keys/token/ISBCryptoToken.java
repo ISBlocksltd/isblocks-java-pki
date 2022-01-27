@@ -360,7 +360,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }catch(Exception e) {
             
         }
-        
+        status = STATUS_ACTIVE;
         return new ArrayList<>(aliasCache.getAllNames());
 
 
