@@ -863,6 +863,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
             parameters.add(new BasicNameValuePair("client_secret", "foo123"));
+            parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
+            parameters.add(new BasicNameValuePair("grant_type","password"));
             if (log.isDebugEnabled()) {
                 log.debug("Using client_id and client_secret: '" + clientID
                         + (StringUtils.isNotEmpty(clientSecret) ? ":<nologgingcleartextpasswords>'" : ":<empty pwd>"));
