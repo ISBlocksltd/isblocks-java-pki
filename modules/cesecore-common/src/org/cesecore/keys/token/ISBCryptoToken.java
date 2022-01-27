@@ -897,10 +897,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }
         //parameters.add(new BasicNameValuePair("resource", oauthResource));
         request.setEntity(new UrlEncodedFormEntity(parameters));
+        log.info("Authorization request: " + request.toString());
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
         }
         try (final CloseableHttpResponse authResponse = authHttpClient.execute(request)) {
+            log.info("Response.toString: " + authResponse.toString());
             final int authStatusCode = authResponse.getStatusLine().getStatusCode();
             if (log.isDebugEnabled()) {
                 log.debug("Status code for authorization request is: " + authStatusCode);
