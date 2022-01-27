@@ -358,7 +358,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             aliasCache = newCache;
             
         }catch(Exception e) {
-            
+            e.printStackTrace();
         }
         status = STATUS_ACTIVE;
         return new ArrayList<>(aliasCache.getAllNames());
