@@ -99,7 +99,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     private static final long serialVersionUID = 7719014139640717867L;
 
-    private static final Logger log = Logger.getLogger(ISBCryptoToken.class);
+    private static final java.util.logging.Logger log = Logger.getLogger(ISBCryptoToken.class);
     /**
      * Internal localization of logs and errors
      */
@@ -802,11 +802,14 @@ public class ISBCryptoToken extends BaseCryptoToken {
     private CloseableHttpResponse httpRequestWithAuthHeader(HttpRequestBase request) throws IOException {
         // Set the cached authorization token if we have any. If the token has expired, or we don't have a cached token, it will return http 401 and we can get a new one
         request.setHeader("Authorization", authorizationHeader);
+        log.info(authorizationHeader);
         if (log.isDebugEnabled()) {
             log.debug("Request: " + request.toString());
         }
         // Apache commons httpclient: https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html
         final CloseableHttpResponse response = httpClient.execute(request);
+        log.info("Status code for request is: " + response.getStatusLine().getStatusCode());
+        log.info("Response.toString: " + response.toString());
         if (log.isDebugEnabled()) {
             log.debug("Status code for request is: " + response.getStatusLine().getStatusCode());
             log.debug("Response.toString: " + response.toString());
