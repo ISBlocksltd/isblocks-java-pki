@@ -120,19 +120,19 @@ public class CryptoTokenInfo implements Named, Serializable {
 
     //ISBlocks Key Manager Properties
     public String getISBType() {
-        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_TYPE);        
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_TYPE);        
     }
     public String getISBName() {
-        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_NAME);        
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_NAME);        
     }
     public String getISBClientID() {
-        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_CLIENTID);        
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_CLIENTID);        
     }
     public boolean isISBUseKeyBinding() {
-        return Boolean.parseBoolean(cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_USE_KEY_BINDING, "false"));        
+        return Boolean.parseBoolean(cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_USE_KEY_BINDING, "false"));        
     }
     public String getISBKeyBinding() {
-        return cryptoTokenProperties.getProperty(ISBCryptoToken.KEY_VAULT_KEY_BINDING);        
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_KEY_BINDING);        
     }
     
     public String getAWSKMSRegion() {
