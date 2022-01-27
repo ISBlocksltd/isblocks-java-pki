@@ -872,7 +872,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
             parameters.add(new BasicNameValuePair("password", "foo123"));
             parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
             parameters.add(new BasicNameValuePair("grant_type","password"));
-            if (log.isDebugEnabled()) {
+            log.info("Using client_id and client_secret: rdcosta@gmail.com'");
+            if (log.isDebugEnabled()) {"Using client_id and client_secret: rdcosta@gmail.com'");
                 log.debug("Using client_id and client_secret: '" + clientID
                         + (StringUtils.isNotEmpty(clientSecret) ? ":<nologgingcleartextpasswords>'" : ":<empty pwd>"));
             }
@@ -893,6 +894,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 }
                 //final String jwtString = getJwtString(oauthServiceURL + "/oauth2/token", clientID, (int) this.aliasCache.getMaxCacheLifeTime() / 1000,
                 //        privateKey, certificate);
+                parameters.add(new BasicNameValuePair("password", "foo123"));
                 parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
                 parameters.add(new BasicNameValuePair("grant_type","password"));
                 //parameters.add(new BasicNameValuePair("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"));
@@ -906,8 +908,10 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }
         //parameters.add(new BasicNameValuePair("resource", oauthResource));
         request.setEntity(new UrlEncodedFormEntity(parameters));
+        log.info("Authorization request: " + request.toString());
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
+            
         }
         try (final CloseableHttpResponse authResponse = authHttpClient.execute(request)) {
             log.info("Response.toString: " + authResponse.toString());
@@ -919,12 +923,13 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final String json = IOUtils.toString(authResponse.getEntity().getContent(), StandardCharsets.UTF_8);
             if (log.isDebugEnabled()) {
                 log.debug("Authorization JSON response: " + json);
+                log.info("Authorization JSON response: " + json);
             }
             final JSONParser jsonParser = new JSONParser();
             final JSONObject parse = (JSONObject) jsonParser.parse(json);
             if (authStatusCode == 401 || authStatusCode == 400) { // 401 expected for no secret or wrong secret, 400 expected for wrong client_id
                 authorizationHeader = null;
-                log.info("Authorization denied with statusCode " + authStatusCode + " for ISB Crypto Token authentication call to URI "
+                log.info("Authorization denied with statusCode1 " + authStatusCode + " for ISB Crypto Token authentication call to URI "
                         + request.getURI() + ", for client_id " + clientID);
                 throw new CryptoTokenAuthenticationFailedException("ISB Crypto Token authorization denied, JSON response: " + json);
             } else if (authStatusCode == 200) {
@@ -935,6 +940,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     log.debug("Authorization header from authentication response: " + authorizationHeader);
                 }
             } else {
+                log.info("UK");
                 throw new CryptoTokenAuthenticationFailedException(
                         "ISB Crypto Token authorization failed with unknown response code " + authStatusCode + ", JSON response: " + json);
             }
