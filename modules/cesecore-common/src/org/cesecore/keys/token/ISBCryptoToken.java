@@ -891,7 +891,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 //if (log.isDebugEnabled()) {
                 //    log.debug("ISB jwt: '" + jwtString + "'");
                 //}
-            } catch (NoSuchAlgorithmException | JOSEException | CryptoTokenOfflineException e) {
+            } catch (Exception e) {
                 throw new CryptoTokenAuthenticationFailedException("Unable to create signed assertion for Azure authentication", e);
             }
         }
