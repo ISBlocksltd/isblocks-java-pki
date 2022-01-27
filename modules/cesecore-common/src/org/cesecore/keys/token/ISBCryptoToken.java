@@ -309,8 +309,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
     @Override
     public int getTokenStatus() {
         // Keep status in memory. As this method is called very often we don't want to make REST calls every time
-        return STATUS_ACTIVE;
-        //return this.status;
+        //return STATUS_ACTIVE;
+        return this.status;
     }
 
     @Override
