@@ -99,7 +99,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     private static final long serialVersionUID = 7719014139640717867L;
 
-    private static final Logger log = Logger.getLogger(ISBCryptoToken.class);
+    private static final java.util.logging.Logger log = Logger.getLogger(ISBCryptoToken.class);
     /**
      * Internal localization of logs and errors
      */
@@ -318,6 +318,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
             log.debug("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
                     + ", " + authorizationHeader);
         }
+        log.info("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
+        + ", " + authorizationHeader);
         // We have a way to check if the alias cache itself has expired, independent of the individual entries, using id==0
         if (aliasCache.shouldCheckForUpdates(0) || aliasCache.getAllNames().isEmpty()) {
             if (log.isDebugEnabled()) {
@@ -864,7 +866,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
-            parameters.add(new BasicNameValuePair("passw", "foo123"));
+            parameters.add(new BasicNameValuePair("password", "foo123"));
             parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
             parameters.add(new BasicNameValuePair("grant_type","password"));
             if (log.isDebugEnabled()) {
@@ -925,6 +927,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             } else if (authStatusCode == 200) {
                 final String accessToken = (String) parse.get("access_token");
                 authorizationHeader = "Bearer " + accessToken;
+                log.info(authorizationHeader);
                 if (log.isDebugEnabled()) {
                     log.debug("Authorization header from authentication response: " + authorizationHeader);
                 }
