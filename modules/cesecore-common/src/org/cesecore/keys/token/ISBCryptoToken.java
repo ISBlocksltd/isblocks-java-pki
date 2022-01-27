@@ -862,7 +862,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
-            parameters.add(new BasicNameValuePair("client_secret", "foo123"));
+            parameters.add(new BasicNameValuePair("password", "foo123"));
             parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
             parameters.add(new BasicNameValuePair("grant_type","password"));
             if (log.isDebugEnabled()) {
