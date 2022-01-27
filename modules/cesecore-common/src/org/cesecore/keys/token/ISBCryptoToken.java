@@ -99,7 +99,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     private static final long serialVersionUID = 7719014139640717867L;
 
-    private static final java.util.logging.Logger log = Logger.getLogger(ISBCryptoToken.class);
+    private static final Logger log = Logger.getLogger(ISBCryptoToken.class);
     /**
      * Internal localization of logs and errors
      */
@@ -318,7 +318,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             log.debug("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
                     + ", " + authorizationHeader);
         }
-        log.info("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
+        log.debug("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
         + ", " + authorizationHeader);
         // We have a way to check if the alias cache itself has expired, independent of the individual entries, using id==0
         if (aliasCache.shouldCheckForUpdates(0) || aliasCache.getAllNames().isEmpty()) {
