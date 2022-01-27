@@ -862,7 +862,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
-            parameters.add(new BasicNameValuePair("client_secret", clientSecret));
+            parameters.add(new BasicNameValuePair("client_secret", "foo123"));
             if (log.isDebugEnabled()) {
                 log.debug("Using client_id and client_secret: '" + clientID
                         + (StringUtils.isNotEmpty(clientSecret) ? ":<nologgingcleartextpasswords>'" : ":<empty pwd>"));
@@ -882,8 +882,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 if (log.isDebugEnabled()) {
                     log.debug("Using client_id and key pair: '" + clientID + "', '" + certificate.getSubjectX500Principal().toString() + "'");
                 }
-                final String jwtString = getJwtString(oauthServiceURL + "/oauth2/token", clientID, (int) this.aliasCache.getMaxCacheLifeTime() / 1000,
-                        privateKey, certificate);
+                //final String jwtString = getJwtString(oauthServiceURL + "/oauth2/token", clientID, (int) this.aliasCache.getMaxCacheLifeTime() / 1000,
+                //        privateKey, certificate);
                 parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
                 parameters.add(new BasicNameValuePair("grant_type","password"));
                 //parameters.add(new BasicNameValuePair("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"));
