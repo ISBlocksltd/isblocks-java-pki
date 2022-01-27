@@ -323,7 +323,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             if (log.isDebugEnabled()) {
                 log.debug("Cache is expired or empty, re-reading aliases: " + aliasCache.getAllNames().size());
             }
-            final HttpGet request = new HttpGet(createFullKeyURL(null, getKeyVaultName()) + "?api-version=7.2");
+            final HttpGet request = new HttpGet("http://20.71.184.96/pdfsigner/gpi/v1/keyring/get/keys/e55e81c7-652a-4e51-958c-aa7373e2ad9f");
             try (final CloseableHttpResponse response = isbHttpRequest(request)) {
                 // Connect to Azure Key Vault and get the list of keys there.
                 final InputStream is = response.getEntity().getContent();
@@ -334,6 +334,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 if (log.isDebugEnabled()) {
                     log.debug("getAliases JSON response: " + json);
                 }
+                log.info("getAliases JSON response: " + json);
                 // Standard JSON Simple parsing, examples see https://github.com/fangyidong/json-simple
                 final JSONParser jsonParser = new JSONParser();
                 final JSONObject parse = (JSONObject) jsonParser.parse(json);
@@ -344,9 +345,10 @@ public class ISBCryptoToken extends BaseCryptoToken {
                         KeyAliasesCache newCache = new KeyAliasesCache();
                         for (Object o : value) {
                             final JSONObject o1 = (JSONObject) o;
-                            final String kid = (String) o1.get("kid");
+                            final String kid = (String) o1.get("id");
                             // Return only the key name, which is what is after the last /.
-                            final String alias = StringUtils.substringAfterLast(kid, "/");
+                            //final String alias = StringUtils.substringAfterLast(kid, "/");
+                            String alias = kid;
                             if (log.isDebugEnabled()) {
                                 log.debug("Adding alias to cache: '" + alias);
                             }
@@ -862,7 +864,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
-            parameters.add(new BasicNameValuePair("password", "foo123"));
+            parameters.add(new BasicNameValuePair("passw", "foo123"));
             parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
             parameters.add(new BasicNameValuePair("grant_type","password"));
             if (log.isDebugEnabled()) {
@@ -899,7 +901,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }
         //parameters.add(new BasicNameValuePair("resource", oauthResource));
         request.setEntity(new UrlEncodedFormEntity(parameters));
-        log.info("Authorization request: " + request.toString());
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
         }
