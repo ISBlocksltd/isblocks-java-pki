@@ -99,7 +99,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     private static final long serialVersionUID = 7719014139640717867L;
 
-    private static final java.util.logging.Logger log = Logger.getLogger(ISBCryptoToken.class);
+    private static final Logger log = Logger.getLogger(ISBCryptoToken.class);
     /**
      * Internal localization of logs and errors
      */
@@ -314,6 +314,21 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     @Override
     public List<String> getAliases() throws CryptoTokenOfflineException {
+        
+        try {
+            isbAuthorizationRequest() ;
+            final HttpGet request1 = new HttpGet("http://20.71.184.96/pdfsigner/gpi/v1/keyring/get/keys/e55e81c7-652a-4e51-958c-aa7373e2ad9f");
+            final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
+            final int requestStatusCode = response1.getStatusLine().getStatusCode();
+            
+            final InputStream is1 = response1.getEntity().getContent();
+            String json1 = IOUtils.toString(is1, StandardCharsets.UTF_8);
+            log.info(json1);
+        }catch(Exception e) {
+            
+        }
+        
+        
         if (log.isDebugEnabled()) {
             log.debug("getAliases called for crypto token: " + getId() + ", " + getTokenName() + ", " + getKeyVaultName() + ", " + getKeyVaultType()
                     + ", " + authorizationHeader);
@@ -770,6 +785,44 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * @throws CryptoTokenOfflineException if there is no clientSecret to authenticate with
      */
     CloseableHttpResponse isbHttpRequest(HttpRequestBase request) throws CryptoTokenAuthenticationFailedException, CryptoTokenOfflineException {
+
+        try {
+            final CloseableHttpResponse response = httpRequestWithAuthHeader(request);
+            final int requestStatusCode = response.getStatusLine().getStatusCode();
+            log.info(requestStatusCode);
+            if (requestStatusCode == 401) {
+                log.info("Access denied calling Key Vault '" + getKeyVaultName()
+                        + "', trying to get authentication URI and fetch authorization token.");
+                // This call will close the response above as quick as possible
+                isbAuthorizationRequestFrom401Response(response);
+                // Now we have a new fresh authorization bearer token, make the request we came to this method for again
+                final CloseableHttpResponse newResponse = httpRequestWithAuthHeader(request);
+                return newResponse;
+            }
+            return response;
+        } catch (IOException | ParseException e) {
+            throw new CryptoTokenOfflineException(e);
+        }
+    }
+    
+    /** Makes a REST API call to Azure, the REST call may need an authorizationToken, and if one does not exist (in this class) one is retrieved.
+     * This means that if a valid authorizationToken exists, only one HTTP request is made, but if no valid authorizationToken exists three HTTP 
+     * request are made:
+     * 1. First request - response is "unauthorized" and authorization URL is parsed from the response
+     * 2. Authorization request - response is an authorizationToken which is set for further use
+     * 3. The First request is tried again again, with the newly fetched authorizationToken
+     * 
+     * Important that caller closes the response, use try-with-resource:
+     *   try (CloseableHttpResponse response = azureHttpRequest(request)) {
+     *    ...
+     *   }
+     * 
+     * @param request HttpRequestBase with the either GET or POST request
+     * @return CloseableHttpResponse with the response, the caller is responsible for closing it, use try-with-resource
+     * @throws CryptoTokenAuthenticationFailedException if authentication to Azure failed 401 or 400 returned, or no Bearer authorization_uri exists in the response input
+     * @throws CryptoTokenOfflineException if there is no clientSecret to authenticate with
+     */
+    CloseableHttpResponse isbHttpRequest2(HttpRequestBase request) throws CryptoTokenAuthenticationFailedException, CryptoTokenOfflineException {
         // Don't even try to make a request if we don't have a client secret as it is required. Better fail fast
         if (StringUtils.isEmpty(clientSecret) && !isKeyVaultUseKeyBinding()) {
             throw new CryptoTokenOfflineException("Crypto token with Key Vault '" + getKeyVaultName()
@@ -873,7 +926,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
             parameters.add(new BasicNameValuePair("grant_type","password"));
             log.info("Using client_id and client_secret: rdcosta@gmail.com'");
-            if (log.isDebugEnabled()) {"Using client_id and client_secret: rdcosta@gmail.com'");
+            if (log.isDebugEnabled()) {
                 log.debug("Using client_id and client_secret: '" + clientID
                         + (StringUtils.isNotEmpty(clientSecret) ? ":<nologgingcleartextpasswords>'" : ":<empty pwd>"));
             }
@@ -940,7 +993,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     log.debug("Authorization header from authentication response: " + authorizationHeader);
                 }
             } else {
-                log.info("UK");
+                log.info("");
                 throw new CryptoTokenAuthenticationFailedException(
                         "ISB Crypto Token authorization failed with unknown response code " + authStatusCode + ", JSON response: " + json);
             }
@@ -982,4 +1035,62 @@ public class ISBCryptoToken extends BaseCryptoToken {
     public void setAuthKeyProvider(KeyAndCertFinder keyAndCertFinder) {
         this.authKeyProvider = keyAndCertFinder;
     }
+    
+    private void  isbAuthorizationRequest() 
+       throws CryptoTokenAuthenticationFailedException, ParseException, IOException{
+        
+        
+        final HttpPost request = new HttpPost("http://20.71.184.96/auth/realms/keycloakdemo/protocol/openid-connect/token");
+        final ArrayList<NameValuePair> parameters = new ArrayList<>();
+        //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
+        //parameters.add(new BasicNameValuePair("client_id", clientID));
+        parameters.add(new BasicNameValuePair("client_id", "angular-app"));
+        parameters.add(new BasicNameValuePair("password", "foo123"));
+        parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
+        parameters.add(new BasicNameValuePair("grant_type","password"));
+        
+        
+        request.setEntity(new UrlEncodedFormEntity(parameters));
+        log.info("Authorization request: " + request.toString());
+        if (log.isDebugEnabled()) {
+            log.debug("Authorization request: " + request.toString());
+            
+        }
+        try (final CloseableHttpResponse authResponse = authHttpClient.execute(request)) {
+            log.info("Response.toString: " + authResponse.toString());
+            final int authStatusCode = authResponse.getStatusLine().getStatusCode();
+            if (log.isDebugEnabled()) {
+                log.debug("Status code for authorization request is: " + authStatusCode);
+                log.debug("Response.toString: " + authResponse.toString());
+            }
+            final String json = IOUtils.toString(authResponse.getEntity().getContent(), StandardCharsets.UTF_8);
+            if (log.isDebugEnabled()) {
+                log.debug("Authorization JSON response: " + json);
+                log.info("Authorization JSON response: " + json);
+            }
+            final JSONParser jsonParser = new JSONParser();
+            final JSONObject parse = (JSONObject) jsonParser.parse(json);
+            if (authStatusCode == 401 || authStatusCode == 400) { // 401 expected for no secret or wrong secret, 400 expected for wrong client_id
+                authorizationHeader = null;
+                log.info("Authorization denied with statusCode1 " + authStatusCode + " for ISB Crypto Token authentication call to URI "
+                        + request.getURI() + ", for client_id " + clientID);
+                throw new CryptoTokenAuthenticationFailedException("ISB Crypto Token authorization denied, JSON response: " + json);
+            } else if (authStatusCode == 200) {
+                final String accessToken = (String) parse.get("access_token");
+                authorizationHeader = "Bearer " + accessToken;
+                log.info(authorizationHeader);
+                if (log.isDebugEnabled()) {
+                    log.debug("Authorization header from authentication response: " + authorizationHeader);
+                }
+            } else {
+                log.info("");
+                throw new CryptoTokenAuthenticationFailedException(
+                        "ISB Crypto Token authorization failed with unknown response code " + authStatusCode + ", JSON response: " + json);
+            }
+        }
+        
+        
+
+    }
+
 }
