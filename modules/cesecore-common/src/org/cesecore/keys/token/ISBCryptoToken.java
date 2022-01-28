@@ -83,6 +83,21 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+
+import java.io.IOException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+
+
+import java.io.ByteArrayInputStream;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1InputStream;
 
 /**
  * Class implementing a keystore on ISB Key Vault, using their REST API.
@@ -331,15 +346,19 @@ public class ISBCryptoToken extends BaseCryptoToken {
             for (Object o : value) {
                 final JSONObject o1 = (JSONObject) o;
                 final String kid = (String) o1.get("kid");
+                final JSONObject attributes = (JSONObject) o1.get("attributes");
+                String alias = (String)attributes.get("label");
+                String subjectPublicKeyInfoBase64 = (String)attributes.get("subjectPublicKeyInfo");
                 // Return only the key name, which is what is after the last /.
                 //final String alias = StringUtils.substringAfterLast(kid, "/");
-                String alias = kid;
+                //String alias = kid;
                 if (log.isDebugEnabled()) {
                     log.debug("Adding alias to cache: '" + alias);
                 }
                 // Add a dummy public key, if there is not already a key in the existing cache for this alias, 
                 // if there is an existing then update with the real one to not break caching behavior
-                final PublicKey oldKey = aliasCache.getEntry(alias.hashCode());
+                //final PublicKey oldKey = aliasCache.getEntry(alias.hashCode());
+                final PublicKey oldKey = getPublicKey(subjectPublicKeyInfoBase64 , new BouncyCastleProvider());
                 if (oldKey != null) {
                     if (log.isDebugEnabled()) {
                         log.debug("Adding alias to cache with existing public key: '" + alias);
@@ -365,6 +384,45 @@ public class ISBCryptoToken extends BaseCryptoToken {
         return new ArrayList<>(aliasCache.getAllNames());
 
 
+    }
+    
+    
+    public static PublicKey getPublicKey(String subjectPublicKeyInfo, Provider provider) throws InvalidKeySpecException, IOException {
+        
+        byte[] decoded = Base64.decodeBase64(subjectPublicKeyInfo);
+        try (ASN1InputStream is = new ASN1InputStream(new ByteArrayInputStream(decoded))) {
+            ASN1Sequence seq = (ASN1Sequence) is.readObject();
+            SubjectPublicKeyInfo info = SubjectPublicKeyInfo.getInstance(seq);
+            X509EncodedKeySpec x509EncodedKeySpec;
+            try {
+                x509EncodedKeySpec = new X509EncodedKeySpec(info.getEncoded());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            try {
+                return KeyFactory.getInstance(info.getAlgorithm().getAlgorithm().getId(), provider).generatePublic(x509EncodedKeySpec);
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException(e);
+            }
+            //return new BcX509ExtensionUtils().createSubjectKeyIdentifier(info);
+          }
+        
+    }
+
+    
+    public static PublicKey getPublicKey(SubjectPublicKeyInfo subjectPublicKeyInfo, Provider provider) throws InvalidKeySpecException {
+        if(subjectPublicKeyInfo==null) return null;
+        X509EncodedKeySpec x509EncodedKeySpec;
+        try {
+            x509EncodedKeySpec = new X509EncodedKeySpec(subjectPublicKeyInfo.getEncoded());
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        try {
+            return KeyFactory.getInstance(subjectPublicKeyInfo.getAlgorithm().getAlgorithm().getId(), provider).generatePublic(x509EncodedKeySpec);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
