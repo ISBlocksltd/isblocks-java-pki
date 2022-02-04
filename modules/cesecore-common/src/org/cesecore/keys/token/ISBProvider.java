@@ -76,7 +76,8 @@ public class ISBProvider extends Provider {
         put("Signature.SHA256WITHECDSA" , ISBSignature.SHA256WithECDSA.class.getName());
         put("Signature.SHA384WITHECDSA" , ISBSignature.SHA384WithECDSA.class.getName());
         put("Signature.SHA512WITHECDSA" , ISBSignature.SHA512WithECDSA.class.getName());
-        put("Signature.EDDSA" , ISBSignature.SHA512WithECDSA.class.getName());
+        put("Signature.ED25519" , ISBSignature.ED25519.class.getName());
+        put("Signature.ED25519" , ISBSignature.ED448.class.getName());
         // Encryption with RSA can be done to support key recovery and SCEP
         put("Cipher.RSA" , ISBCipher.RSA.class.getName());
     }
@@ -176,7 +177,9 @@ public class ISBProvider extends Provider {
                     }
                     final JSONParser parser = new JSONParser();
                     final JSONObject parse = (JSONObject) parser.parse(json);
-                    final String value = (String) parse.get("value");
+                    final JSONObject attributes  = (JSONObject) parse.get("attributes");
+                    final String signature = (String) parse.get("signature");
+                    String value = signature; 
                     if (log.isDebugEnabled()) {
                         log.debug("Signature response base64 value: " + value);
                     }
@@ -206,6 +209,10 @@ public class ISBProvider extends Provider {
                         }
                         final BigInteger[] plain = PlainDSAEncoding.INSTANCE.decode(n, bytes);
                         bytes = StandardDSAEncoding.INSTANCE.encode(n, plain[0], plain[1]);
+                    }else if(azureSignAlg.startsWith("ED")) {
+                        
+                        int nLen = 64; 
+                        
                     }
                     return bytes;
                 }
@@ -288,6 +295,20 @@ public class ISBProvider extends Provider {
             public SHA512WithECDSA() {
                 hashAlg = "SHA512";
                 azureSignAlg = "ES512";
+            }
+        }
+        
+        public static final class ED25519 extends ISBSignature {
+            public ED25519() {
+                hashAlg = "ED25519";
+                azureSignAlg = "ED25519";
+            }
+        }
+        
+        public static final class ED448 extends ISBSignature {
+            public ED448() {
+                hashAlg = "ED448";
+                azureSignAlg = "ED448";
             }
         }
     }

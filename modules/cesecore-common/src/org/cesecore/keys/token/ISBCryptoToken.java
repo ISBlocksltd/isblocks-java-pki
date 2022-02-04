@@ -135,7 +135,9 @@ public class ISBCryptoToken extends BaseCryptoToken {
     private X509Certificate certificate;
     /** Fail fast status flag, of token is on- or off-line */
     private int status = STATUS_OFFLINE;
-
+    /** The same but for client ID */
+    private String clientUserID = "rdcosta@gmail.com";
+    
     /** This should be set when after creating this object to allow it to the key/cert for auth to ISB on init */
     private KeyAndCertFinder authKeyProvider = null;
 
@@ -333,7 +335,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         
         try {
             isbAuthorizationRequest() ;
-            final HttpGet request1 = new HttpGet("http://20.71.184.96/pdfsigner/gpi/v1/keyring/get/keys/e55e81c7-652a-4e51-958c-aa7373e2ad9f");
+            final HttpGet request1 = new HttpGet("http://20.71.184.96/pdfsigner/gpi/v1/keyring/get/keys/" + clientID);
             final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
             final int requestStatusCode = response1.getStatusLine().getStatusCode();
             
@@ -496,6 +498,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     @Override
     public void generateKeyPair(KeyGenParams keyGenParams, String alias) throws InvalidAlgorithmParameterException, CryptoTokenOfflineException {
+        
         generateKeyPair(keyGenParams.getKeySpecification(), alias);
 
     }
@@ -505,13 +508,15 @@ public class ISBCryptoToken extends BaseCryptoToken {
         if (log.isDebugEnabled()) {
             log.debug(">generateKeyPair(keyspec): " + keySpec + ", " + alias);
         }
+        log.info(">generateKeyPair(keyspec): " + keySpec + ", " + alias);
         if (StringUtils.isNotEmpty(alias)) {
             checkAliasName(alias);
             // validate that keySpec matches some of the allowed Azure Key Vault key types/lengths.
             // Allow kty RSA-HSM or EC-HSM. RSA key_size or "crv" (P-256, P-384, P-521), 
             // {"kty": "RSA-HSM", "key-size": 2048, "attributes": {"enabled": true}}
             // {"kty": "EC-HSM", "crv": "P-256", "attributes": {"enabled": true}}
-            final StringBuilder str = new StringBuilder("{\"kty\": ");
+            final StringBuilder str = new StringBuilder("{\"id\": ");
+            str.append("\"").append(clientID);
             final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
             // If it is pure numeric, it is an RSA key length
             if (NumberUtils.isNumber(formatCheckedKeySpec)) {
@@ -523,9 +528,9 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     log.debug("RSA keyspec is: " + formatCheckedKeySpec + ", and key vault type is " + kty);
                 }
                 str.append("\"").append(kty).append("\", \"key_size\": ").append(formatCheckedKeySpec);
-            } else {
+            } else if(keySpec.toLowerCase().contains("ed")){
                 // Must be EC?
-                String kty = "EC-HSM";
+                String kty = "ED255519";
                 if (getKeyVaultType().equals("standard")) {
                     kty = "EC";
                 }
@@ -543,9 +548,35 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     throw new InvalidAlgorithmParameterException(
                             "EC curve " + keySpec + " is not a valid curve for Azure Key Vault, only P-256, P-384 and P-521 is allowed");
                 }
-                str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
+                //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
+                
+                str.append("\"");
+                str.append(", \"attributes\": {\"subjectDN\": \"").append("CN="+alias).append("\", \"label\": \"").append(alias).append("\", \"algorithm\": \"").append(azureCrv).append("\"}}");
+            
+            } else {
+                    // Must be EC?
+                    String kty = "EC-HSM";
+                    if (getKeyVaultType().equals("standard")) {
+                        kty = "EC";
+                    }
+                    if (log.isDebugEnabled()) {
+                        log.debug("EC keyspec is: " + keySpec + ", and key vault type is " + kty);
+                    }
+                    String azureCrv;
+                    if ("prime256v1".equals(keySpec) || "secp256r1".equals(keySpec) || "P-256".equals(keySpec)) {
+                        azureCrv = "P-256";
+                    } else if ("prime384v1".equals(keySpec) || "secp384r1".equals(keySpec) || "P-384".equals(keySpec)) {
+                        azureCrv = "P-384";
+                    } else if ("prime521v1".equals(keySpec) || "secp521r1".equals(keySpec) || "P-521".equals(keySpec)) {
+                        azureCrv = "P-521";
+                    } else {
+                        throw new InvalidAlgorithmParameterException(
+                                "EC curve " + keySpec + " is not a valid curve for Azure Key Vault, only P-256, P-384 and P-521 is allowed");
+                    }
+                    //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
+                    
             }
-            str.append(", \"attributes\": {\"enabled\": true}}");
+           
             //  generate key in our previously created key vault.
             final HttpPost request = new HttpPost(createFullKeyURL(alias, getKeyVaultName()) + "/create?api-version=7.2");
             request.setHeader("Content-Type", "application/json");
@@ -915,8 +946,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
-            parameters.add(new BasicNameValuePair("password", "foo123"));
-            parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
+            parameters.add(new BasicNameValuePair("password", clientSecret));
+            parameters.add(new BasicNameValuePair("username",clientUserID));
             parameters.add(new BasicNameValuePair("grant_type","password"));
             log.info("Using client_id and client_secret: rdcosta@gmail.com'");
             if (log.isDebugEnabled()) {
@@ -940,8 +971,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 }
                 //final String jwtString = getJwtString(oauthServiceURL + "/oauth2/token", clientID, (int) this.aliasCache.getMaxCacheLifeTime() / 1000,
                 //        privateKey, certificate);
-                parameters.add(new BasicNameValuePair("password", "foo123"));
-                parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
+                parameters.add(new BasicNameValuePair("password", clientSecret));
+                parameters.add(new BasicNameValuePair("username",clientUserID));
                 parameters.add(new BasicNameValuePair("grant_type","password"));
                 //parameters.add(new BasicNameValuePair("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"));
                 //parameters.add(new BasicNameValuePair("client_assertion", jwtString));
