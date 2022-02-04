@@ -671,12 +671,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final String msg = intres.getLocalizedMessage("token.errornosuchkey", alias);
             throw new CryptoTokenOfflineException(msg);
         }
-        final String keyurl = createFullKeyURL(alias, getKeyVaultName());
+        //final String keyurl = createFullKeyURL(alias, getKeyVaultName());
         if (log.isDebugEnabled()) {
             // This is a URI for Key Vault
-            log.debug("getPrivateKey: " + keyurl);
+            log.debug("getPrivateKey: " + alias);
         }
-        return new ISBProvider.KeyVaultPrivateKey(keyurl, pubK.getAlgorithm(), this);
+        return new ISBProvider.KeyVaultPrivateKey(alias, pubK.getAlgorithm(), this);
     }
 
     @Override
@@ -876,7 +876,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * @return CloseableHttpResponse with the server response, the caller is responsible for closing it
      * @throws IOException in case HTTP request fails
      */
-    private CloseableHttpResponse httpRequestWithAuthHeader(HttpRequestBase request) throws IOException {
+    public CloseableHttpResponse httpRequestWithAuthHeader(HttpRequestBase request) throws IOException {
         // Set the cached authorization token if we have any. If the token has expired, or we don't have a cached token, it will return http 401 and we can get a new one
         request.setHeader("Authorization", authorizationHeader);
         log.info(authorizationHeader);
@@ -1060,7 +1060,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         this.authKeyProvider = keyAndCertFinder;
     }
     
-    private void  isbAuthorizationRequest() 
+    public void  isbAuthorizationRequest() 
        throws CryptoTokenAuthenticationFailedException, ParseException, IOException{
         
         

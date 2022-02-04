@@ -124,10 +124,11 @@ public class ISBProvider extends Provider {
                 if (log.isDebugEnabled()) {
                     log.debug("engineSign: " + this.getClass().getName());
                 }
+                
+                //this.privateKey.getCryptoToken().
                 // Key Vault REST API for signing: https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign
-                final HttpPost request = new HttpPost(privateKey.getKeyURL() + "/sign?api-version=7.2");
-                request.setHeader("Content-Type", "application/json");
-
+                //final HttpPost request = new HttpPost(privateKey.getKeyURL() + "/sign?api-version=7.2");
+               
                 // Create hash value of the data to be signed
                 final byte[] signInput;
                 try {
@@ -152,18 +153,31 @@ public class ISBProvider extends Provider {
                 // PS384 is SHA384WithRSAAndMGF1 (RSA-PSS)
                 // PS512 is SHA512WithRSAAndMGF1 (RSA-PSS)
                 // ES256K is SHA256WithECDSA with curve P-256K from NIST
-                map.put("alg", azureSignAlg);
-                map.put("value", Base64.encodeBase64URLSafeString(signInput));
+                map.put("label", this.privateKey.getKeyURL());
+                map.put("keyId", this.privateKey.getKeyURL());
+                map.put("algorithm", azureSignAlg);
+                map.put("data", Base64.encodeBase64URLSafeString(signInput));
                 final JSONObject jsonObject = new JSONObject(map);
                 final StringWriter out = new StringWriter();
                 jsonObject.writeJSONString(out);
                 final String reqJson = out.toString();
-                request.setEntity(new StringEntity(reqJson));
+                
+                final StringBuilder str = new StringBuilder("{\"attributes\": {");
+                str.append(reqJson);
+                str.append("}}");
+                log.info(str.toString());
+                
+
+                privateKey.getCryptoToken().isbAuthorizationRequest() ;
+                final HttpPost  request1 = new HttpPost("http://20.71.184.96/pdfsigner/gpi/v1/keyring/sign/signlabel/");
+                request1.setHeader("Content-Type", "application/json");
+                request1.setEntity(new StringEntity(str.toString()));
                 if (log.isDebugEnabled()) {
-                    log.debug("engineSign Request: " + request.toString()+", "+privateKey.toString());
+                    log.debug("engineSign Request: " + request1.toString()+", "+privateKey.toString());
                     log.debug("engineSign Request JSON: " + reqJson+", "+privateKey.toString());
                 }
-                try (final CloseableHttpResponse response = privateKey.getCryptoToken().isbHttpRequest(request)) {
+                //final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
+                try (final CloseableHttpResponse response = privateKey.getCryptoToken().httpRequestWithAuthHeader(request1)) {
                     final int statusCode = response.getStatusLine().getStatusCode();
                     final InputStream is = response.getEntity().getContent();
                     final String json = IOUtils.toString(is, StandardCharsets.UTF_8);
@@ -216,7 +230,7 @@ public class ISBProvider extends Provider {
                     }
                     return bytes;
                 }
-            } catch (CryptoTokenAuthenticationFailedException | CryptoTokenOfflineException | IOException | ParseException e) {
+            } catch (CryptoTokenAuthenticationFailedException |  IOException | ParseException e) {
                 throw new SignatureException(e);
             }
         }
