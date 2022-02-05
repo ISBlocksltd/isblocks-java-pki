@@ -77,7 +77,7 @@ public class ISBProvider extends Provider {
         put("Signature.SHA384WITHECDSA" , ISBSignature.SHA384WithECDSA.class.getName());
         put("Signature.SHA512WITHECDSA" , ISBSignature.SHA512WithECDSA.class.getName());
         put("Signature.ED25519" , ISBSignature.ED25519.class.getName());
-        put("Signature.ED25519" , ISBSignature.ED448.class.getName());
+        put("Signature.ED448" , ISBSignature.ED448.class.getName());
         // Encryption with RSA can be done to support key recovery and SCEP
         put("Cipher.RSA" , ISBCipher.RSA.class.getName());
     }
@@ -131,14 +131,17 @@ public class ISBProvider extends Provider {
                
                 // Create hash value of the data to be signed
                 final byte[] signInput;
-                try {
-                    final MessageDigest digest = MessageDigest.getInstance(hashAlg, BouncyCastleProvider.PROVIDER_NAME);
-                    signInput = digest.digest(tbs.toByteArray());
-                } catch (NoSuchAlgorithmException e) {
-                    throw new SignatureException("Hash algorithm " + hashAlg + " can not be found in the BC provider: ", e);
-                } catch (NoSuchProviderException e) {
-                    throw new SignatureException("BC provider not installed, fatal error: ", e);
+                if (hashAlg != null) {
+                    try {
+                        final MessageDigest digest = MessageDigest.getInstance(hashAlg, BouncyCastleProvider.PROVIDER_NAME);
+                        signInput = digest.digest(tbs.toByteArray());
+                    } catch (NoSuchAlgorithmException e) {
+                        throw new SignatureException("Hash algorithm " + hashAlg + " can not be found in the BC provider: ", e);
+                    } catch (NoSuchProviderException e) {
+                        throw new SignatureException("BC provider not installed, fatal error: ", e);
+                    }
                 }
+               
                 final HashMap<String, String> map = new HashMap<>();
                 // Signature algorithms, https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign#jsonwebkeysignaturealgorithm
                 // Supported/tested
@@ -314,14 +317,14 @@ public class ISBProvider extends Provider {
         
         public static final class ED25519 extends ISBSignature {
             public ED25519() {
-                hashAlg = "ED25519";
+                hashAlg = null;
                 azureSignAlg = "ED25519";
             }
         }
         
         public static final class ED448 extends ISBSignature {
             public ED448() {
-                hashAlg = "ED448";
+                hashAlg = null;
                 azureSignAlg = "ED448";
             }
         }
