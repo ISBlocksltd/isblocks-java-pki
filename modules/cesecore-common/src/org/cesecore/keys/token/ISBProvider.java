@@ -140,6 +140,9 @@ public class ISBProvider extends Provider {
                     } catch (NoSuchProviderException e) {
                         throw new SignatureException("BC provider not installed, fatal error: ", e);
                     }
+                } else {
+             
+                    signInput = tbs.toByteArray();
                 }
                
                 final HashMap<String, String> map = new HashMap<>();
