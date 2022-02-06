@@ -161,7 +161,7 @@ public class ISBProvider extends Provider {
                 // ES256K is SHA256WithECDSA with curve P-256K from NIST
                 map.put("label", this.privateKey.getKeyURL());
                 map.put("keyId", this.privateKey.getKeyURL());
-                map.put("ringName", this.privateKey.getCryptoToken().getClientID());
+                map.put("ringId", this.privateKey.getCryptoToken().getClientID());
                 map.put("algorithm", azureSignAlg);
                 map.put("data", Base64.encodeBase64URLSafeString(signInput));
                 final JSONObject jsonObject = new JSONObject(map);
