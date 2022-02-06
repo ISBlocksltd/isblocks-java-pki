@@ -200,7 +200,8 @@ public class ISBProvider extends Provider {
                     final JSONParser parser = new JSONParser();
                     final JSONObject parse = (JSONObject) parser.parse(json);
                     final JSONObject attributes  = (JSONObject) parse.get("attributes");
-                    final String signature = (String) parse.get("signedData");
+                    final String signature = (String) attributes.get("signedData");
+                    log.info("Signature response base64 value: " + value);
                     String value = signature; 
                     if (log.isDebugEnabled()) {
                         log.debug("Signature response base64 value: " + value);
