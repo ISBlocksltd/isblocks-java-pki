@@ -224,6 +224,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
     private String getKeyVaultType() {
         return getProperties().getProperty(ISBCryptoToken.ISB_TYPE);
     }
+    
+    /** get the keyVaultType, set during init of crypto token */
+    private String getClientID() {
+        return getProperties().getProperty(ISBCryptoToken.ISB_CLIENTID);
+    }
 
     /** get the keyVaultType, set during init of crypto token */
     private boolean isKeyVaultUseKeyBinding() {

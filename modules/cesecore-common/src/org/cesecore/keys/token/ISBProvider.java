@@ -161,6 +161,7 @@ public class ISBProvider extends Provider {
                 // ES256K is SHA256WithECDSA with curve P-256K from NIST
                 map.put("label", this.privateKey.getKeyURL());
                 map.put("keyId", this.privateKey.getKeyURL());
+                map.put("ringName", this.privateKey.getCryptoToken().getClientID())
                 map.put("algorithm", azureSignAlg);
                 map.put("data", Base64.encodeBase64URLSafeString(signInput));
                 final JSONObject jsonObject = new JSONObject(map);
@@ -168,9 +169,9 @@ public class ISBProvider extends Provider {
                 jsonObject.writeJSONString(out);
                 final String reqJson = out.toString();
                 
-                final StringBuilder str = new StringBuilder("{\"attributes\": {");
+                final StringBuilder str = new StringBuilder("{\"attributes\": ");
                 str.append(reqJson);
-                str.append("}}");
+                str.append("}");
                 log.info(str.toString());
                 
 
@@ -192,13 +193,14 @@ public class ISBProvider extends Provider {
                         log.debug("Response.toString: " + response.toString());
                         log.debug("Response JSON: " + json);
                     }
+                    log.info("Response JSON: " + json);
                     if (statusCode != 200) {
                         throw new SignatureException("Signing failed with status code " + statusCode + ", and response JSON: " + json);
                     }
                     final JSONParser parser = new JSONParser();
                     final JSONObject parse = (JSONObject) parser.parse(json);
                     final JSONObject attributes  = (JSONObject) parse.get("attributes");
-                    final String signature = (String) parse.get("signature");
+                    final String signature = (String) parse.get("signedData");
                     String value = signature; 
                     if (log.isDebugEnabled()) {
                         log.debug("Signature response base64 value: " + value);
