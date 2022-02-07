@@ -163,7 +163,7 @@ public class ISBProvider extends Provider {
                 map.put("keyId", this.privateKey.getKeyURL());
                 map.put("ringId", this.privateKey.getCryptoToken().getClientID());
                 map.put("algorithm", azureSignAlg);
-                map.put("data", Base64.encodeBase64URLSafeString(signInput));
+                map.put("data", Base64.encodeBase64(signInput));
                 final JSONObject jsonObject = new JSONObject(map);
                 final StringWriter out = new StringWriter();
                 jsonObject.writeJSONString(out);
@@ -201,7 +201,6 @@ public class ISBProvider extends Provider {
                     final JSONObject parse = (JSONObject) parser.parse(json);
                     final JSONObject attributes  = (JSONObject) parse.get("attributes");
                     final String signature = (String) attributes.get("signedData");
-                    log.info("Signature response base64 value: " + value);
                     String value = signature; 
                     if (log.isDebugEnabled()) {
                         log.debug("Signature response base64 value: " + value);
