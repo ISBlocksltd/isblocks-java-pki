@@ -300,8 +300,8 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         private String keyVaultClientID = "";
         private boolean keyVaultUseKeyBinding = false;
         private String keyVaultKeyBinding = "";
-        private String ISBType = "premium";
-        private String ISBName = "ejbca-keyvault";
+        private String ISBType = "";
+        private String ISBName = "";
         private String ISBClientID = "";
         private String ISBClientName = "";
         private String ISBUserID = "";

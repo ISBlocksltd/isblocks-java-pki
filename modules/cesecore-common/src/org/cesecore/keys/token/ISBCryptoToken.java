@@ -561,7 +561,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             // {"kty": "EC-HSM", "crv": "P-256", "attributes": {"enabled": true}}
             final StringBuilder str = new StringBuilder("{\"id\": ");
             str.append("\"").append(clientID);
-            str.append("\"attributes\":{");
+            str.append("\",attributes\":{");
             str.append("\"label\":").append("\"").append(alias).append("\",");
             str.append("\"subjectDN\":").append("\"CN=").append(alias).append("\",");
             final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
