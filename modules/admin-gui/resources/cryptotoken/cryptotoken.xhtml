@@ -391,7 +391,7 @@
                 
                 <h:panelGroup id="currentCryptoTokenISBUserIDPanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
-                    <h:outputLabel id="currentCryptoTokenISBClientNameLabel"
+                    <h:outputLabel id="currentCryptoTokenISBUserID"
                         for="currentCryptoTokenISBUserID"
                         value="#{web.text.CRYPTOTOKEN_ISB_USERID} " />
                     <h:outputText id="currentCryptoTokenISBUserID" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
