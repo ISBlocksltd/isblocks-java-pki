@@ -141,6 +141,7 @@ public class CryptoTokenInfo implements Named, Serializable {
         return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_KEY_BINDING);        
     }
     
+    //AWS
     public String getAWSKMSRegion() {
         return cryptoTokenProperties.getProperty(CryptoTokenConstants.AWSKMS_REGION);        
     }

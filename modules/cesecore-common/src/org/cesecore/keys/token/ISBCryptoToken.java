@@ -138,7 +138,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
     /** Fail fast status flag, of token is on- or off-line */
     private int status = STATUS_OFFLINE;
     /** The same but for client ID */
-    private String clientUserID = "";
+    private String clientUserID;
     
     /** This should be set when after creating this object to allow it to the key/cert for auth to ISB on init */
     private KeyAndCertFinder authKeyProvider = null;
@@ -309,7 +309,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         authHttpClient = clientBuilder.build();
 
         setProperties(properties);
-        log.info("Initializing Azure Key Vault: Name=" + getKeyVaultName() + ", type=" + getKeyVaultType());
+        log.info("Initializing ISB Key Vault: Name=" + getKeyVaultName() + ", type=" + getKeyVaultType());
         init(properties, false, id);
 
         final String keyVaultName = properties.getProperty(ISBCryptoToken.ISB_NAME);
@@ -319,18 +319,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
         // Check that key vault name does not have any bad characters, should follow the same regexp as aliases, except also allow dots
         checkVaultName(keyVaultName);
         clientID = properties.getProperty(ISBCryptoToken.ISB_CLIENTID);
-        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_TYPE) + ", Name=" + keyVaultName
-                + ", clientID=" + clientID);
 
         clientName = properties.getProperty(ISBCryptoToken.ISB_CLIENTNAME);
-        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_CLIENTNAME) + ", Name=" + keyVaultName
-                + ", clientID=" + clientID);
 
         clientUserID = properties.getProperty(ISBCryptoToken.ISB_USER_ID);
-        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_USER_ID) + ", Name=" + keyVaultName
-                + ", clientID=" + clientID);
 
-        
+       
         // Install the Azure key vault signature provider for this crypto token
         Provider sigProvider = Security.getProvider(getISBProviderName(id));
         if (sigProvider != null) {
