@@ -154,7 +154,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * Key Vault Type is the "pricing tier" as it says when creating an Azure Key Vault, it is also called SKU_TYPE somewhere else.
      * It can be either standard or premium, which translates to key types RSA/EC and RSA-HSM/EC-HSM, where the -HSM types are non-extractable HSM backed.
      */
-    public static final String ISB_TYPE = "keyVaultType";
+    public static final String ISB_TYPE = "ISBType";
 
     /** Property for storing the key vault name in the crypto token properties.
      * Azure Key Vault name, key vault specific, this is the string that will be part of the REST call URI
@@ -165,7 +165,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      *   Resulting URL: https://" + KEY_VAULT_NAME + ".vault.azure.net/
      * 
      */
-    public static final String ISB_NAME = "keyVaultName";
+    public static final String ISB_NAME = "ISBName";
 
     /** Property for storing the client_id used to access the key vault, in the crypto token properties.
      * Azure Key Vault client_id, key vault specific, this is the "AD user" that is authorized to connect to and use the key vault
@@ -174,13 +174,13 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * In the same location is your Tenant ID
      * It is recommended by MS that we should use client certificate authentication instead of id/secret. You get the id/secret or client certificate from AD.
      */
-    public static final String ISB_CLIENTID = "keyVaultClientID";
+    public static final String ISB_CLIENTID = "ISBClientID";
     
-    public static final String ISB_CLIENTNAME = "keyVaultClientName";
+    public static final String ISB_CLIENTNAME = "ISBClientName";
     
     
     
-    public static final String ISB_USER_ID = "keyVaultUserID";
+    public static final String ISB_USER_ID = "ISBUserID";
 
     /**
      * Property for storing whether we will use app secret or an internal key binding when authenticating to Azure.
@@ -571,7 +571,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 //str.append("\"").append(kty).append("\", \"key_size\": ").append(formatCheckedKeySpec);
             } else if(keySpec.toLowerCase().contains("25519")){
                 // Must be EC?
-                algorithm = "ED255519";
+                algorithm = "ED25519";
                
                 //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
                 
@@ -612,6 +612,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final HttpPost request = new HttpPost(clientName + "/pdfsigner/gpi/v1/keyring/generate");
             request.setHeader("Content-Type", "application/json");
             try {
+                log.info(str.toString());
                 request.setEntity(new StringEntity(str.toString()));
                 isbAuthorizationRequest();
                 if (log.isDebugEnabled()) {
