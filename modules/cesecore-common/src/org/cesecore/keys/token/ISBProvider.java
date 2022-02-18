@@ -176,7 +176,7 @@ public class ISBProvider extends Provider {
                 
 
                 privateKey.getCryptoToken().isbAuthorizationRequest() ;
-                final HttpPost  request1 = new HttpPost(this.privateKey.getCryptoToken().getClientName(). + "/pdfsigner/gpi/v1/keyring/sign/sign/");
+                final HttpPost  request1 = new HttpPost(this.privateKey.getCryptoToken().getClientName() + "/pdfsigner/gpi/v1/keyring/sign/sign/");
                 request1.setHeader("Content-Type", "application/json");
                 request1.setEntity(new StringEntity(str.toString()));
                 if (log.isDebugEnabled()) {
