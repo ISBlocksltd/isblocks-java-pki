@@ -138,7 +138,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
     /** Fail fast status flag, of token is on- or off-line */
     private int status = STATUS_OFFLINE;
     /** The same but for client ID */
-    private String clientUserID = "rdcosta@gmail.com";
+    private String clientUserID = "";
     
     /** This should be set when after creating this object to allow it to the key/cert for auth to ISB on init */
     private KeyAndCertFinder authKeyProvider = null;
@@ -561,7 +561,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             // {"kty": "EC-HSM", "crv": "P-256", "attributes": {"enabled": true}}
             final StringBuilder str = new StringBuilder("{\"id\": ");
             str.append("\"").append(clientID);
-            str.append("\",attributes\":{");
+            str.append("\",\"attributes\":{");
             str.append("\"label\":").append("\"").append(alias).append("\",");
             str.append("\"subjectDN\":").append("\"CN=").append(alias).append("\",");
             final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
