@@ -367,7 +367,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         
         try {
             isbAuthorizationRequest() ;
-            final HttpGet request1 = new HttpGet(getClientName()  + "/pdfsigner/get/keys/" + clientID);
+            final HttpGet request1 = new HttpGet(getClientName()  + "/pdfsigner/gpi/v1/keyring/get/keys/" + clientID);
             final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
             final int requestStatusCode = response1.getStatusLine().getStatusCode();
             
