@@ -308,7 +308,7 @@
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
                 </h:panelGroup>
 
-<!-- Begin IS Blocks Mods -->
+			<!-- Begin IS Blocks Mods -->
 			<!--
 			 <h:panelGroup id="currentCryptoTokenISBTypePanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
@@ -319,7 +319,7 @@
                 </h:panelGroup>
                 <h:panelGroup
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
-				
+
                     <h:selectOneMenu
                         value="#{cryptoTokenMBean.currentCryptoToken.ISBType}"
                         rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
@@ -334,9 +334,8 @@
                     <h:outputText
                         value="#{cryptoTokenMBean.currentCryptoToken.ISBType}"
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
-                    -->
                 </h:panelGroup>
-
+				-->
                 <h:panelGroup id="currentCryptoTokenISBPanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
                     <h:outputLabel id="currentCryptoTokenISBNameLabel"
@@ -410,7 +409,7 @@
                 </h:panelGroup>
 
 				<!-- End IS Blocks Mods-->
-				
+		
                 <h:panelGroup id="currentCryptoTokenKeyVaultTypePanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showAzureCryptoToken}">
                     <h:outputLabel id="currentCryptoTokenKeyVaultTypeLabel"
@@ -436,7 +435,7 @@
                         value="#{cryptoTokenMBean.currentCryptoToken.keyVaultType}"
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
                 </h:panelGroup>
-
+			
                 <h:panelGroup id="currentCryptoTokenKeyVaultNamePanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showAzureCryptoToken}">
                     <h:outputLabel id="currentCryptoTokenKeyVaultNameLabel"
