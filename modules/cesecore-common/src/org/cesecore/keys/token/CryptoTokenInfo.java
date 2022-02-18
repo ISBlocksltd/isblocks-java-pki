@@ -128,6 +128,12 @@ public class CryptoTokenInfo implements Named, Serializable {
     public String getISBClientID() {
         return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_CLIENTID);        
     }
+    public String getISBClientName() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_CLIENTNAME);        
+    }
+    public String getISBUserID() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_USER_ID);        
+    }
     public boolean isISBUseKeyBinding() {
         return Boolean.parseBoolean(cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_USE_KEY_BINDING, "false"));        
     }

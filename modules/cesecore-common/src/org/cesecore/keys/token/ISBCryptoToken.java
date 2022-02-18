@@ -129,6 +129,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
     private String clientSecret;
     /** The same but for client ID */
     private String clientID;
+    /** The same but for client ID */
+    private String clientName;
     /** The same but for secretKey for OAuth2 authentication */
     private PrivateKey privateKey;
     /** The same but for certificate for OAuth2 authentication */
@@ -173,6 +175,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * It is recommended by MS that we should use client certificate authentication instead of id/secret. You get the id/secret or client certificate from AD.
      */
     public static final String ISB_CLIENTID = "keyVaultClientID";
+    
+    public static final String ISB_CLIENTNAME = "keyVaultClientName";
+    
+    
+    
+    public static final String ISB_USER_ID = "keyVaultUserID";
 
     /**
      * Property for storing whether we will use app secret or an internal key binding when authenticating to Azure.
@@ -228,6 +236,16 @@ public class ISBCryptoToken extends BaseCryptoToken {
     /** get the keyVaultType, set during init of crypto token */
     public String getClientID() {
         return getProperties().getProperty(ISBCryptoToken.ISB_CLIENTID);
+    }
+    
+    /** get the keyVaultType, set during init of crypto token */
+    public String getClientName() {
+        return getProperties().getProperty(ISBCryptoToken.ISB_CLIENTNAME);
+    }
+    
+    /** get the keyVaultType, set during init of crypto token */
+    public String getUserID() {
+        return getProperties().getProperty(ISBCryptoToken.ISB_USER_ID);
     }
 
     /** get the keyVaultType, set during init of crypto token */
@@ -340,7 +358,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         
         try {
             isbAuthorizationRequest() ;
-            final HttpGet request1 = new HttpGet("http://20.71.184.96/pdfsigner/gpi/v1/keyring/get/keys/" + clientID);
+            final HttpGet request1 = new HttpGet(getClientName()  + "/get/keys/" + clientID);
             final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
             final int requestStatusCode = response1.getStatusLine().getStatusCode();
             
@@ -507,9 +525,21 @@ public class ISBCryptoToken extends BaseCryptoToken {
         generateKeyPair(keyGenParams.getKeySpecification(), alias);
 
     }
+    
+    /*
+     * '{"id": "9dc47178-f425-4319-92f6-35be658f27ca", 
+     * "type": null, 
+     * "name": null, 
+     * "attributes": 
+     * {  "ringName": "9dc47178-f425-4319-92f6-35be658f27ca" 
+     *  , "subjectDN" :"CN=key07", 
+     *    "label" : "key07",  
+     *     "algorithm": "ED25519"}}' 
+     */
 
     @Override
     public void generateKeyPair(final String keySpec, final String alias) throws InvalidAlgorithmParameterException, CryptoTokenOfflineException {
+        String algorithm = null;
         if (log.isDebugEnabled()) {
             log.debug(">generateKeyPair(keyspec): " + keySpec + ", " + alias);
         }
@@ -522,43 +552,29 @@ public class ISBCryptoToken extends BaseCryptoToken {
             // {"kty": "EC-HSM", "crv": "P-256", "attributes": {"enabled": true}}
             final StringBuilder str = new StringBuilder("{\"id\": ");
             str.append("\"").append(clientID);
+            str.append("\"attributes\":{");
+            str.append("\"label\":").append("\"").append(alias).append("\",");
+            str.append("\"subjectDN\":").append("\"CN=").append(alias).append("\",");
             final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
             // If it is pure numeric, it is an RSA key length
             if (NumberUtils.isNumber(formatCheckedKeySpec)) {
-                String kty = "RSA-HSM";
-                if (getKeyVaultType().equals("standard")) {
-                    kty = "RSA";
-                }
-                if (log.isDebugEnabled()) {
-                    log.debug("RSA keyspec is: " + formatCheckedKeySpec + ", and key vault type is " + kty);
-                }
-                str.append("\"").append(kty).append("\", \"key_size\": ").append(formatCheckedKeySpec);
-            } else if(keySpec.toLowerCase().contains("ed")){
+                algorithm = keySpec;
+                //str.append("\"").append(kty).append("\", \"key_size\": ").append(formatCheckedKeySpec);
+            } else if(keySpec.toLowerCase().contains("25519")){
                 // Must be EC?
-                String kty = "ED255519";
-                if (getKeyVaultType().equals("standard")) {
-                    kty = "EC";
-                }
-                if (log.isDebugEnabled()) {
-                    log.debug("EC keyspec is: " + keySpec + ", and key vault type is " + kty);
-                }
-                String azureCrv;
-                if ("prime256v1".equals(keySpec) || "secp256r1".equals(keySpec) || "P-256".equals(keySpec)) {
-                    azureCrv = "P-256";
-                } else if ("prime384v1".equals(keySpec) || "secp384r1".equals(keySpec) || "P-384".equals(keySpec)) {
-                    azureCrv = "P-384";
-                } else if ("prime521v1".equals(keySpec) || "secp521r1".equals(keySpec) || "P-521".equals(keySpec)) {
-                    azureCrv = "P-521";
-                } else {
-                    throw new InvalidAlgorithmParameterException(
-                            "EC curve " + keySpec + " is not a valid curve for Azure Key Vault, only P-256, P-384 and P-521 is allowed");
-                }
+                algorithm = "ED255519";
+               
                 //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
                 
-                str.append("\"");
-                str.append(", \"attributes\": {\"subjectDN\": \"").append("CN="+alias).append("\", \"label\": \"").append(alias).append("\", \"algorithm\": \"").append(azureCrv).append("\"}}");
-            
-            } else {
+               
+            } else if(keySpec.toLowerCase().contains("448")){
+                // Must be EC?
+                algorithm = "ED448";
+               
+                //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
+                
+                
+            }else {
                     // Must be EC?
                     String kty = "EC-HSM";
                     if (getKeyVaultType().equals("standard")) {
@@ -569,11 +585,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     }
                     String azureCrv;
                     if ("prime256v1".equals(keySpec) || "secp256r1".equals(keySpec) || "P-256".equals(keySpec)) {
-                        azureCrv = "P-256";
+                        algorithm = "ECsecp256r1";
                     } else if ("prime384v1".equals(keySpec) || "secp384r1".equals(keySpec) || "P-384".equals(keySpec)) {
-                        azureCrv = "P-384";
+                        algorithm = "ECsecp384r1";
                     } else if ("prime521v1".equals(keySpec) || "secp521r1".equals(keySpec) || "P-521".equals(keySpec)) {
-                        azureCrv = "P-521";
+                        algorithm = "ECsecp512r1";
                     } else {
                         throw new InvalidAlgorithmParameterException(
                                 "EC curve " + keySpec + " is not a valid curve for Azure Key Vault, only P-256, P-384 and P-521 is allowed");
@@ -581,19 +597,29 @@ public class ISBCryptoToken extends BaseCryptoToken {
                     //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
                     
             }
-           
+            str.append("\"algorithm\": \"").append(algorithm).append("\"}}");
+            
             //  generate key in our previously created key vault.
-            final HttpPost request = new HttpPost(createFullKeyURL(alias, getKeyVaultName()) + "/create?api-version=7.2");
+            final HttpPost request = new HttpPost(clientName + "/pdfsigner//gpi/v1/keyring/generate");
             request.setHeader("Content-Type", "application/json");
             try {
                 request.setEntity(new StringEntity(str.toString()));
+                isbAuthorizationRequest();
                 if (log.isDebugEnabled()) {
                     log.debug("Key generation request JSON: " + str.toString());
                 }
             } catch (UnsupportedEncodingException e) {
                 throw new InvalidAlgorithmParameterException(e);
+            } catch (CryptoTokenAuthenticationFailedException e) {
+                throw new InvalidAlgorithmParameterException(e);
+            } catch (ParseException e) {
+                throw new InvalidAlgorithmParameterException(e);
+            } catch (IOException e) {
+                throw new CryptoTokenOfflineException(e);
             }
+            
             try (final CloseableHttpResponse response = isbHttpRequest(request)) {
+                
                 final InputStream is = response.getEntity().getContent();
                 final String json = IOUtils.toString(is, StandardCharsets.UTF_8);
                 if (log.isDebugEnabled()) {
@@ -944,7 +970,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             throw new CryptoTokenAuthenticationFailedException(
                     "We did not find a 'Bearer authorization' uri in the WWW-Authenticate for a 401 response");
         }
-        final HttpPost request = new HttpPost("http://20.71.184.96/auth/realms/keycloakdemo/protocol/openid-connect/token");
+        final HttpPost request = new HttpPost(clientName + "/auth/realms/keycloakdemo/protocol/openid-connect/token");
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
@@ -1069,12 +1095,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
        throws CryptoTokenAuthenticationFailedException, ParseException, IOException{
         
         
-        final HttpPost request = new HttpPost("http://20.71.184.96/auth/realms/keycloakdemo/protocol/openid-connect/token");
+        final HttpPost request = new HttpPost(clientName + "/auth/realms/keycloakdemo/protocol/openid-connect/token");
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
-        parameters.add(new BasicNameValuePair("password", "foo123"));
+        parameters.add(new BasicNameValuePair("password", clientSecret));
         parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
         parameters.add(new BasicNameValuePair("grant_type","password"));
         
@@ -1095,7 +1121,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final String json = IOUtils.toString(authResponse.getEntity().getContent(), StandardCharsets.UTF_8);
             if (log.isDebugEnabled()) {
                 log.debug("Authorization JSON response: " + json);
-                log.info("Authorization JSON response: " + json);
+
             }
             final JSONParser jsonParser = new JSONParser();
             final JSONObject parse = (JSONObject) jsonParser.parse(json);
@@ -1107,12 +1133,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
             } else if (authStatusCode == 200) {
                 final String accessToken = (String) parse.get("access_token");
                 authorizationHeader = "Bearer " + accessToken;
-                log.info(authorizationHeader);
+
                 if (log.isDebugEnabled()) {
                     log.debug("Authorization header from authentication response: " + authorizationHeader);
                 }
             } else {
-                log.info("");
+
                 throw new CryptoTokenAuthenticationFailedException(
                         "ISB Crypto Token authorization failed with unknown response code " + authStatusCode + ", JSON response: " + json);
             }

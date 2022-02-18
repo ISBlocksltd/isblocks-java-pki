@@ -214,6 +214,14 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public String getISBClientID() {
             return cryptoTokenInfo.getISBClientID();
         }
+        
+        public String getISBClientName() {
+            return cryptoTokenInfo.getISBClientName();
+        }
+        
+        public String getISBUserID() {
+            return cryptoTokenInfo.getISBUserID();
+        }
 
         public String getISBAuthenticationCode() {
             if (!requiresSecretToActivate) {
@@ -295,6 +303,8 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         private String ISBType = "premium";
         private String ISBName = "ejbca-keyvault";
         private String ISBClientID = "";
+        private String ISBClientName = "";
+        private String ISBUserID = "";
         private boolean ISBUseKeyBinding = false;
         private String ISBKeyBinding = "";
         
@@ -407,9 +417,17 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public void setISBName(String ISBName) {
             this.ISBName = ISBName;
         }
+        
+        public void setISBUserID(String ISBUserID) {
+            this.ISBUserID = ISBUserID;
+        }
 
         public void setISBClientID(String ISBClientID) {
             this.ISBClientID = ISBClientID;
+        }
+        
+        public void setISBClientName(String ISBClientName) {
+            this.ISBClientName = ISBClientName;
         }
 
         public String getAWSKMSRegion() {
@@ -508,6 +526,15 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
         public String getISBClientID() {
             return ISBClientID;
         }
+        
+        public String getISBClientName() {
+            return ISBClientName;
+        }
+        
+        public String getISBUserID() {
+            return ISBUserID;
+        }
+        
         public boolean isShowSoftCryptoToken() {
             return SoftCryptoToken.class.getSimpleName().equals(getType());
         }
@@ -1151,11 +1178,16 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                 String isbType = getCurrentCryptoToken().getISBType().trim();
                 String isbName = getCurrentCryptoToken().getISBName().trim();
                 String isbClientID = getCurrentCryptoToken().getISBClientID().trim();
+                String isbClientName = getCurrentCryptoToken().getISBClientName().trim();
                 boolean isbUseKeyBinding = getCurrentCryptoToken().isKeyVaultUseKeyBinding();
                 String isbKeyBinding = getCurrentCryptoToken().getKeyVaultKeyBinding();
+                String isbUserID = getCurrentCryptoToken().getISBUserID();
+               
                 properties.setProperty(ISBCryptoToken.ISB_TYPE, isbType);
                 properties.setProperty(ISBCryptoToken.ISB_NAME, isbName);
                 properties.setProperty(ISBCryptoToken.ISB_CLIENTID, isbClientID);
+                properties.setProperty(ISBCryptoToken.ISB_CLIENTNAME, isbClientName);
+                properties.setProperty(ISBCryptoToken.ISB_USER_ID, isbUserID);
                 properties.setProperty(ISBCryptoToken.ISB_USE_KEY_BINDING, Boolean.toString(isbUseKeyBinding));
                 properties.setProperty(ISBCryptoToken.ISB_KEY_BINDING, isbKeyBinding);
             } 
@@ -1479,6 +1511,8 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                     currentCryptoToken.setISBType(cryptoTokenInfo.getISBType());
                     currentCryptoToken.setISBName(cryptoTokenInfo.getISBName());
                     currentCryptoToken.setISBClientID(cryptoTokenInfo.getISBClientID());
+                    currentCryptoToken.setISBClientID(cryptoTokenInfo.getISBClientName());
+                    currentCryptoToken.setISBClientID(cryptoTokenInfo.getISBUserID());
                     currentCryptoToken.setISBUseKeyBinding(cryptoTokenInfo.isISBUseKeyBinding());
                     currentCryptoToken.setISBKeyBinding(cryptoTokenInfo.getISBKeyBinding());
                 }
