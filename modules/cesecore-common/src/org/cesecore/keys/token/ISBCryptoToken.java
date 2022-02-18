@@ -322,6 +322,15 @@ public class ISBCryptoToken extends BaseCryptoToken {
         log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_TYPE) + ", Name=" + keyVaultName
                 + ", clientID=" + clientID);
 
+        clientName = properties.getProperty(ISBCryptoToken.ISB_CLIENTNAME);
+        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_CLIENTNAME) + ", Name=" + keyVaultName
+                + ", clientID=" + clientID);
+
+        clientUserID = properties.getProperty(ISBCryptoToken.ISB_USER_ID);
+        log.info("Initializing ISB Key Vault: Type=" + properties.getProperty(ISBCryptoToken.ISB_USER_ID) + ", Name=" + keyVaultName
+                + ", clientID=" + clientID);
+
+        
         // Install the Azure key vault signature provider for this crypto token
         Provider sigProvider = Security.getProvider(getISBProviderName(id));
         if (sigProvider != null) {
