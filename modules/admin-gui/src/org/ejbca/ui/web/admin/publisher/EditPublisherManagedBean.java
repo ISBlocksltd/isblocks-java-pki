@@ -80,6 +80,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_ADPUBLISHER, "ACTIVEDIRECTORYPUBLISHER");
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_CUSTOMPUBLISHERCONTAINER, "CUSTOMPUBLISHER");
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_MULTIGROUPPUBLISHER, "MULTIGROUPPUBLISHER");
+        AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_VAPUBLISHER , "MULTIGROUPPUBLISHER");
     }
     
     private String selectedPublisherType;
@@ -96,6 +97,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     private ActiveDirectoryPublisherMBData activeDirectoryPublisherMBData;
     private MultiGroupPublisherMBData multiGroupPublisherMBData;
     private CustomPublisherMBData customPublisherMBData;
+    private ValidationAuthorityPublisherMBData vaPublisherMBData;
 
     public LdapPublisherMBData getLdapPublisherMBData() {
         return ldapPublisherMBData;
@@ -115,6 +117,10 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     
     public CustomPublisherMBData getCustomPublisherMBData() {
         return customPublisherMBData;
+    }
+    
+    public ValidationAuthorityPublisherMBData getValidationAuthorityPublisherMBData() {
+        return vaPublisherMBData;
     }
 
     private BasePublisher publisher = null;
@@ -213,7 +219,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
             retval = PublisherConst.TYPE_LDAPSEARCHPUBLISHER;
         }
         // Legacy VA publisher doesn't exist in community edition, so check the qualified class name instead.
-        if (publisher.getClass().getName().equals(LegacyValidationAuthorityPublisher.OLD_VA_PUBLISHER_QUALIFIED_NAME)) {
+        if (publisher instanceof ValidationAuthorityPublisher)) {
             retval = PublisherConst.TYPE_VAPUBLISHER;
         }
         if (publisher instanceof ActiveDirectoryPublisher) {
@@ -523,6 +529,10 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         
         if (publisher instanceof CustomPublisherContainer) {
             customPublisherMBData.setCustomPublisherData((CustomPublisherContainer) publisher);
+        }
+        
+        if (publisher instanceof ValidationAuthorityPublisher) {
+            vaPublisherMBData.setCustomPublisherData((ValidationAuthorityPublisher) publisher);
         }
     }
 

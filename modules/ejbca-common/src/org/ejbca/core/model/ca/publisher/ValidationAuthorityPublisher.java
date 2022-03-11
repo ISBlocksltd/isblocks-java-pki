@@ -41,13 +41,6 @@ import org.ejbca.util.JDBCUtil;
 import org.ejbca.util.JDBCUtil.Preparer;
 import org.cesecore.util.ExternalScriptsAllowlist;
 
-/**
- * The old open source VA Publisher, saved for upgrade reasons. 
- *
- * @version $Id$
- *
- */
-
 public class ValidationAuthorityPublisher extends BasePublisher implements ICustomPublisher {
 
     private static final long serialVersionUID = -8046305645562531532L;
