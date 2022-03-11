@@ -881,7 +881,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
      * @throws CryptoTokenAuthenticationFailedException if authentication to Azure failed 401 or 400 returned, or no Bearer authorization_uri exists in the response input
      * @throws CryptoTokenOfflineException if there is no clientSecret to authenticate with
      */
-    CloseableHttpResponse isbHttpRequest2(HttpRequestBase request) throws CryptoTokenAuthenticationFailedException, CryptoTokenOfflineException {
+    /*CloseableHttpResponse isbHttpRequest2(HttpRequestBase request) throws CryptoTokenAuthenticationFailedException, CryptoTokenOfflineException {
         // Don't even try to make a request if we don't have a client secret as it is required. Better fail fast
         if (StringUtils.isEmpty(clientSecret) && !isKeyVaultUseKeyBinding()) {
             throw new CryptoTokenOfflineException("Crypto token with Key Vault '" + getKeyVaultName()
@@ -903,7 +903,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         } catch (IOException | ParseException e) {
             throw new CryptoTokenOfflineException(e);
         }
-    }
+    }*/
 
     /** makes a HTTP request using the httpClient CloseableHttpClient of this class
      *  
@@ -920,8 +920,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }
         // Apache commons httpclient: https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html
         final CloseableHttpResponse response = httpClient.execute(request);
-        log.info("Status code for request is: " + response.getStatusLine().getStatusCode());
-        log.info("Response.toString: " + response.toString());
         if (log.isDebugEnabled()) {
             log.debug("Status code for request is: " + response.getStatusLine().getStatusCode());
             log.debug("Response.toString: " + response.toString());
@@ -1105,7 +1103,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         //parameters.add(new BasicNameValuePair("client_id", clientID));
         parameters.add(new BasicNameValuePair("client_id", "angular-app"));
         parameters.add(new BasicNameValuePair("password", clientSecret));
-        parameters.add(new BasicNameValuePair("username","rdcosta@gmail.com"));
+        parameters.add(new BasicNameValuePair("username",clientUserID));
         parameters.add(new BasicNameValuePair("grant_type","password"));
         
         

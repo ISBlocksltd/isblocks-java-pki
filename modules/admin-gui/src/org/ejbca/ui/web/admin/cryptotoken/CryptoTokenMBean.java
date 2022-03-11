@@ -1508,7 +1508,7 @@ public class CryptoTokenMBean extends BaseManagedBean implements Serializable {
                     currentCryptoToken.setKeyVaultUseKeyBinding(cryptoTokenInfo.isKeyVaultUseKeyBinding());
                     currentCryptoToken.setKeyVaultKeyBinding(cryptoTokenInfo.getKeyVaultKeyBinding());
                 }
-                if (cryptoTokenInfo.getType().equals(ISBCryptoToken.class.getSimpleName())) {         
+                if (cryptoTokenInfo.getType().equals(ISBCryptoToken.class.getSimpleName())) {            
                     currentCryptoToken.setISBType(cryptoTokenInfo.getISBType());
                     currentCryptoToken.setISBName(cryptoTokenInfo.getISBName());
                     currentCryptoToken.setISBClientID(cryptoTokenInfo.getISBClientID());
