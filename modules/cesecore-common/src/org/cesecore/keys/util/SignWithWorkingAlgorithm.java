@@ -120,7 +120,6 @@ public class SignWithWorkingAlgorithm {
                 try {
                     operation.taskWithSigning(trySignAlgorithm, this.provider);
                 } catch( final Exception e ) {
-                    e.printStackTrace();
                     log.info(String.format("Signature algorithm '%s' not working for provider '%s'. Exception: %s", trySignAlgorithm, this.provider, e.getMessage()));
                     continue;
                 }

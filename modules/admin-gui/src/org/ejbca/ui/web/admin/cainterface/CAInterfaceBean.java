@@ -90,6 +90,7 @@ import org.cesecore.keys.token.CryptoTokenNameInUseException;
 import org.cesecore.keys.token.CryptoTokenOfflineException;
 import org.cesecore.keys.token.KeyPairInfo;
 import org.cesecore.keys.token.SoftCryptoToken;
+import org.cesecore.keys.validation.KeyValidatorSessionLocal;
 import org.cesecore.util.AsStringComparator;
 import org.cesecore.util.Base64;
 import org.cesecore.util.CertTools;
@@ -112,6 +113,7 @@ import org.ejbca.ui.web.RequestHelper;
 import org.ejbca.ui.web.RevokedInfoView;
 import org.ejbca.ui.web.admin.ca.EditCaUtil;
 import org.ejbca.ui.web.jsf.configuration.EjbcaWebBean;
+import org.ejbca.util.cert.OID;
 
 /**
  * A class used as an interface between CA jsp pages and CA ejbca functions.
@@ -133,10 +135,9 @@ public class CAInterfaceBean implements Serializable {
     private CertReqHistorySessionLocal certreqhistorysession;
     private CryptoTokenManagementSessionLocal cryptoTokenManagementSession;
     private PublisherSessionLocal publishersession;
+    private KeyValidatorSessionLocal keyValidatorSession;
 
     private SignSession signsession;
-
-    private CADataHandler cadatahandler;
 
     private boolean initialized;
     private AuthenticationToken authenticationToken;
@@ -161,10 +162,10 @@ public class CAInterfaceBean implements Serializable {
           signsession = ejbLocalHelper.getSignSession();
           publishersession = ejbLocalHelper.getPublisherSession();
           certificateProfileSession = ejbLocalHelper.getCertificateProfileSession();
+          keyValidatorSession = ejbLocalHelper.getKeyValidatorSession();
           authenticationToken = ejbcawebbean.getAdminObject();
           this.ejbcawebbean = ejbcawebbean;
 
-          cadatahandler = new CADataHandler(authenticationToken, ejbLocalHelper, ejbcawebbean);
           initialized =true;
         }
     }
@@ -200,13 +201,10 @@ public class CAInterfaceBean implements Serializable {
         return casession.getCAIdToNameMap().get(caId);
     }
 
-    public CADataHandler getCADataHandler(){
-      return cadatahandler;
-    }
-
     /** Slow method to get CAInfo. The returned object has id-to-name maps of publishers and validators. */
     public CAInfoView getCAInfo(int caid) throws AuthorizationDeniedException {
-      return cadatahandler.getCAInfo(caid);
+      final CAInfo cainfo = casession.getCAInfo(authenticationToken, caid);
+      return new CAInfoView(cainfo, ejbcawebbean, publishersession.getPublisherIdToNameMap(), keyValidatorSession.getKeyValidatorIdToNameMap());
     }
 
     public int getCAStatusNoAuth(int caid) {
@@ -336,7 +334,7 @@ public class CAInterfaceBean implements Serializable {
             byte[] fileBuffer) throws Exception {
         // This will occur if administrator has insufficient access to crypto tokens, which won't provide any
         // selectable items for Crypto Token when creating a CA.
-        if (caInfoDto.getCryptoTokenIdParam().isEmpty()) {
+        if (StringUtils.isEmpty(caInfoDto.getCryptoTokenIdParam())) {
             log.info("No selected crypto token. Check crypto token access rules for administrator " + authenticationToken);
             throw new CryptoTokenAuthenticationFailedException("Crypto token authentication failed for administrator " + authenticationToken);
         }
@@ -488,6 +486,11 @@ public class CAInterfaceBean implements Serializable {
 
 	            /* Process certificate policies. */
 	            final List<CertificatePolicy> policies = parsePolicies(caInfoDto.getPolicyId());
+	            for (CertificatePolicy certificatePolicy : policies) {
+	                if (!OID.isValidOid(certificatePolicy.getPolicyID())) {
+	                    throw new ParameterException(ejbcawebbean.getText("INVALIDPOLICYOID"));                                              
+	                }
+	            }
 	            // Certificate policies from the CA and the CertificateProfile will be merged for cert creation in the CAAdminSession.createCA call
 	            final List<Integer> crlPublishers = StringTools.idStringToListOfInteger(availablePublisherValues, LIST_SEPARATOR);
 	            final List<Integer> keyValidators = StringTools.idStringToListOfInteger(availableKeyValidatorValues, LIST_SEPARATOR);
@@ -732,7 +735,8 @@ public class CAInterfaceBean implements Serializable {
             caadminsession.createCA(authenticationToken, cainfo);
             int caid = cainfo.getCAId();
             try {
-                byte[] certreq = cadatahandler.makeRequest(caid, fileBuffer, caToken.getAliasFromPurpose(CATokenConstants.CAKEYPURPOSE_CERTSIGN));
+                byte[] certreq = caadminsession.makeRequest(authenticationToken, caid, 
+                                       fileBuffer, caToken.getAliasFromPurpose(CATokenConstants.CAKEYPURPOSE_CERTSIGN));
                 saveRequestData(certreq);
             } catch (CryptoTokenOfflineException e) {
                 casession.removeCA(authenticationToken, caid);
@@ -826,7 +830,7 @@ public class CAInterfaceBean implements Serializable {
 
     public List<CertificatePolicy> parsePolicies(String policyid) {
         final ArrayList<CertificatePolicy> policies = new ArrayList<>();
-        if (!(policyid == null || policyid.trim().equals(""))) {
+        if (!(policyid == null || policyid.trim().isEmpty() || policyid.trim().equals(ejbcawebbean.getText("NONE")))) {
             final String[] str = policyid.split("\\s+");
             if (str.length > 1) {
                 policies.add(new CertificatePolicy(str[0], CertificatePolicy.id_qt_cps, str[1]));
@@ -909,6 +913,11 @@ public class CAInterfaceBean implements Serializable {
                        ? Integer.parseInt(caInfoDto.getCaSerialNumberOctetSize()) : CesecoreConfiguration.getSerialNumberOctetSizeForNewCa();
 
                final List<CertificatePolicy> policies = parsePolicies(caInfoDto.getPolicyId());
+               for (CertificatePolicy certificatePolicy : policies) {
+                   if (!OID.isValidOid(certificatePolicy.getPolicyID())) {
+                       throw new ParameterException(ejbcawebbean.getText("INVALIDPOLICYOID"));                                              
+                   }
+               }
                // No need to add the Keyrecovery extended service here, because it is only "updated" in EditCA, and there
                // is not need to update it.
                X509CAInfo.X509CAInfoBuilder x509CAInfoBuilder = new X509CAInfo.X509CAInfoBuilder()

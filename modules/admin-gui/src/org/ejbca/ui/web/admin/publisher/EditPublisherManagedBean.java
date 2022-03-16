@@ -55,6 +55,7 @@ import org.ejbca.core.model.ca.publisher.PublisherConst;
 import org.ejbca.core.model.ca.publisher.PublisherDoesntExistsException;
 import org.ejbca.core.model.ca.publisher.PublisherException;
 import org.ejbca.core.model.ca.publisher.PublisherExistsException;
+import org.ejbca.ui.web.ParameterException;
 import org.ejbca.ui.web.admin.BaseManagedBean;
 import org.ejbca.ui.web.admin.configuration.SortableSelectItem;
 
@@ -80,7 +81,6 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_ADPUBLISHER, "ACTIVEDIRECTORYPUBLISHER");
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_CUSTOMPUBLISHERCONTAINER, "CUSTOMPUBLISHER");
         AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_MULTIGROUPPUBLISHER, "MULTIGROUPPUBLISHER");
-        AVAILABLE_PUBLISHERS.put(PublisherConst.TYPE_VAPUBLISHER , "MULTIGROUPPUBLISHER");
     }
     
     private String selectedPublisherType;
@@ -97,7 +97,6 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     private ActiveDirectoryPublisherMBData activeDirectoryPublisherMBData;
     private MultiGroupPublisherMBData multiGroupPublisherMBData;
     private CustomPublisherMBData customPublisherMBData;
-    private ValidationAuthorityPublisherMBData vaPublisherMBData;
 
     public LdapPublisherMBData getLdapPublisherMBData() {
         return ldapPublisherMBData;
@@ -118,10 +117,6 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     public CustomPublisherMBData getCustomPublisherMBData() {
         return customPublisherMBData;
     }
-    
-    public ValidationAuthorityPublisherMBData getValidationAuthorityPublisherMBData() {
-        return vaPublisherMBData;
-    }
 
     private BasePublisher publisher = null;
     private Integer publisherId = null;
@@ -136,6 +131,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     private boolean useQueueForOcspResponses;
     private boolean keepPublishedInQueue;
     private boolean onlyUseQueue;
+    private boolean safeDirectPublishing;
 
     @ManagedProperty(value = "#{listPublishers}")
     private ListPublishersManagedBean listPublishers;
@@ -219,7 +215,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
             retval = PublisherConst.TYPE_LDAPSEARCHPUBLISHER;
         }
         // Legacy VA publisher doesn't exist in community edition, so check the qualified class name instead.
-        if (publisher instanceof ValidationAuthorityPublisher)) {
+        if (publisher.getClass().getName().equals(LegacyValidationAuthorityPublisher.OLD_VA_PUBLISHER_QUALIFIED_NAME)) {
             retval = PublisherConst.TYPE_VAPUBLISHER;
         }
         if (publisher instanceof ActiveDirectoryPublisher) {
@@ -454,6 +450,14 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         this.onlyUseQueue = onlyUseQueue;
     }
     
+    public boolean isSafeDirectPublishing() {
+        return safeDirectPublishing;
+    }
+
+    public void setSafeDirectPublishing(boolean safeDirectPublishing) {
+        this.safeDirectPublishing = safeDirectPublishing;
+    }
+
     public String getCustomPublisherPropertyText(final CustomPublisherProperty customPublisherProperty) {
         return getEjbcaWebBean()
                 .getText(getCurrentClassSimple().toUpperCase() + "_" + customPublisherProperty.getName().replaceAll("\\.", "_").toUpperCase());
@@ -476,7 +480,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     public String savePublisher() throws AuthorizationDeniedException {
         try {
             prepareForSave();
-        } catch (PublisherDoesntExistsException | PublisherExistsException | PublisherException e) {
+        } catch (PublisherDoesntExistsException | PublisherExistsException | PublisherException | ParameterException e) {
             addErrorMessage(e.getMessage());
             return StringUtils.EMPTY;
         }
@@ -487,7 +491,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
     public void savePublisherAndTestConnection() throws AuthorizationDeniedException {
         try {
             prepareForSave();
-        } catch (PublisherDoesntExistsException | PublisherExistsException | PublisherException e) {
+        } catch (PublisherDoesntExistsException | PublisherExistsException | PublisherException | ParameterException e) {
             addErrorMessage(e.getMessage());
             return;
         }
@@ -507,7 +511,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
                 || StringUtils.contains(selectedPublisherType, "EnterpriseValidationAuthorityPublisher");
     }
     
-    private void prepareForSave() throws PublisherDoesntExistsException, PublisherExistsException, PublisherException {
+    private void prepareForSave() throws PublisherDoesntExistsException, PublisherExistsException, PublisherException, ParameterException {
         //Set General Settings
         setPublisherQueueAndGeneralSettings();
         
@@ -530,14 +534,11 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         if (publisher instanceof CustomPublisherContainer) {
             customPublisherMBData.setCustomPublisherData((CustomPublisherContainer) publisher);
         }
-        
-        if (publisher instanceof ValidationAuthorityPublisher) {
-            vaPublisherMBData.setCustomPublisherData((ValidationAuthorityPublisher) publisher);
-        }
     }
 
     private void setPublisherQueueAndGeneralSettings() {
         publisher.setOnlyUseQueue(onlyUseQueue);
+        publisher.setSafeDirectPublishing(safeDirectPublishing);
         publisher.setKeepPublishedInQueue(keepPublishedInQueue);
         publisher.setUseQueueForCRLs(useQueueForCRLs);
         publisher.setUseQueueForCertificates(useQueueForCertificates);
@@ -610,6 +611,7 @@ public class EditPublisherManagedBean extends BaseManagedBean implements Seriali
         selectedPublisherType = getSelectedPublisherValue();
         publisherDescription = publisher.getDescription();
         onlyUseQueue = publisher.getOnlyUseQueue();
+        safeDirectPublishing = publisher.getSafeDirectPublishing();
         keepPublishedInQueue = publisher.getKeepPublishedInQueue();
         useQueueForCRLs = publisher.getUseQueueForCRLs();
         useQueueForCertificates = publisher.getUseQueueForCertificates();
