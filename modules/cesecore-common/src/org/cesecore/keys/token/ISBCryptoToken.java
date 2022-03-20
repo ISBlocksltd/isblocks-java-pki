@@ -140,6 +140,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
     /** The same but for client ID */
     private String clientUserID;
     
+    private String authURL;
+    
     /** This should be set when after creating this object to allow it to the key/cert for auth to ISB on init */
     private KeyAndCertFinder authKeyProvider = null;
 
@@ -313,6 +315,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         init(properties, false, id);
 
         final String keyVaultName = properties.getProperty(ISBCryptoToken.ISB_NAME);
+        authURL = keyVaultName;
         if (keyVaultName == null) {
             throw new NoSuchSlotException("No key vault Name defined for crypto token");
         }
@@ -972,7 +975,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             throw new CryptoTokenAuthenticationFailedException(
                     "We did not find a 'Bearer authorization' uri in the WWW-Authenticate for a 401 response");
         }
-        final HttpPost request = new HttpPost(keyVaultName + "/auth/realms/keycloakdemo/protocol/openid-connect/token");
+        final HttpPost request = new HttpPost(keyVaultName + "/auth/realms/system/protocol/openid-connect/token");
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
