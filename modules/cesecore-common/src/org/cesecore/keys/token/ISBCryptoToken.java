@@ -361,7 +361,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         
         try {
             isbAuthorizationRequest() ;
-            final HttpGet request1 = new HttpGet(getClientName()  + "/pdfsigner/gpi/v1/keyring/get/keys/" + clientID);
+            final HttpGet request1 = new HttpGet(getClientName()  + "/gpi/v1/keyring/get/keys/" + clientID);
             final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
             final int requestStatusCode = response1.getStatusLine().getStatusCode();
             
@@ -603,7 +603,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             str.append("\"algorithm\": \"").append(algorithm).append("\"}}");
             
             //  generate key in our previously created key vault.
-            final HttpPost request = new HttpPost(clientName + "/pdfsigner/gpi/v1/keyring/generate");
+            final HttpPost request = new HttpPost(clientName + "/gpi/v1/keyring/generate");
             request.setHeader("Content-Type", "application/json");
             try {
                 log.info(str.toString());
