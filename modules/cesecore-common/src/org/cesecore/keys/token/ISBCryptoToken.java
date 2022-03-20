@@ -979,7 +979,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
-        parameters.add(new BasicNameValuePair("client_id", "angular-app"));
+        parameters.add(new BasicNameValuePair("client_id", "ejbca"));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
             parameters.add(new BasicNameValuePair("password", clientSecret));
@@ -1100,11 +1100,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
        throws CryptoTokenAuthenticationFailedException, ParseException, IOException{
         
         
-        final HttpPost request = new HttpPost(authURL + "/auth/realms/keycloakdemo/protocol/openid-connect/token");
+        final HttpPost request = new HttpPost(authURL + "/auth/realms/system/protocol/openid-connect/token");
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
-        parameters.add(new BasicNameValuePair("client_id", "angular-app"));
+        parameters.add(new BasicNameValuePair("client_id", "ejbca"));
         parameters.add(new BasicNameValuePair("password", clientSecret));
         parameters.add(new BasicNameValuePair("username",clientUserID));
         parameters.add(new BasicNameValuePair("grant_type","password"));
