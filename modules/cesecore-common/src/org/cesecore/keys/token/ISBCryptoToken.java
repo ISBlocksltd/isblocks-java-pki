@@ -100,8 +100,7 @@ import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1InputStream;
 
 /**
- * Class implementing a keystore on ISB Key Vault, using their REST API.
- * https://docs.microsoft.com/en-us/rest/api/keyvault/
+ * Class implementing a keystore on ISB Key Vault, using the ISB REST API.
  */
 public class ISBCryptoToken extends BaseCryptoToken {
 
@@ -302,9 +301,9 @@ public class ISBCryptoToken extends BaseCryptoToken {
         // Create HttpClients to connect to Azure Key Vault, and Azure OAuth service (for authorization token)
         final HttpClientBuilder clientBuilder = HttpClientBuilder.create();
         final RequestConfig requestConfig = RequestConfig.custom()
-                .setSocketTimeout(10000) // 10 seconds between packets makes the HSM unusable
-                .setConnectTimeout(10000) // we should not wait more than 10 seconds for a single operation, since we hash locally even signing a CRL should be fast from the HSM side
-                .setConnectionRequestTimeout(10000) // getting a connection should not take more than 10 seconds
+                .setSocketTimeout(30000) // 30 seconds to return response 
+                .setConnectTimeout(30000) // 30 seconds to return response 
+                .setConnectionRequestTimeout(30000) // 30 seconds to return response 
                 .build();
         clientBuilder.setDefaultRequestConfig(requestConfig);
         httpClient = clientBuilder.build();
@@ -370,7 +369,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
             
             final InputStream is1 = response1.getEntity().getContent();
             String json1 = IOUtils.toString(is1, StandardCharsets.UTF_8);
-            log.info(json1);
             final JSONParser jsonParser = new JSONParser();
             final JSONArray value = (JSONArray) jsonParser.parse(json1);
             KeyAliasesCache newCache = new KeyAliasesCache();
@@ -459,7 +457,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
     @Override
     public void activate(final char[] authCode) throws CryptoTokenOfflineException, CryptoTokenAuthenticationFailedException {
         clientSecret = new String(authCode);
-        log.info("Activating Key Vault Crypto Token, listing aliases: " + getKeyVaultName());
+        log.info("Activating ISB Crypto Token, listing aliases: " + getKeyVaultName());
         getAliases(); // getAliases sets status to on-line if it succeeds
     }
 
@@ -486,7 +484,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
     @Override
     public void deleteEntry(final String alias)
-            throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, CryptoTokenOfflineException {
+        throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, CryptoTokenOfflineException {
         if (StringUtils.isNotEmpty(alias)) {
             checkAliasName(alias);
             final Map<String, Integer> nameToId = aliasCache.getNameToIdMap();
@@ -497,7 +495,16 @@ public class ISBCryptoToken extends BaseCryptoToken {
             // remove the key from azure
             // https://docs.microsoft.com/en-us/rest/api/keyvault/deletekey/deletekey
             // DELETE {vaultBaseUrl}/keys/{key-name}?api-version=7.2
-            final HttpDelete request = new HttpDelete(createFullKeyURL(alias, getKeyVaultName()) + "?api-version=7.2");
+            
+            
+            try {
+                isbAuthorizationRequest() ;
+                final HttpPost request = new HttpPost(getClientName()  + "/gpi/v1/keyring/get/keys/" + clientID + "/" + alias);
+                final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request);
+                final int requestStatusCode = response1.getStatusLine().getStatusCode();
+                //final HttpPost request = new HttpPost(getClientName()  + "/gpi/v1/keyring/delete/keys/" + clientID + "/" + alias);
+            
+ 
             try (final CloseableHttpResponse response = isbHttpRequest(request)) {
                 if (response.getStatusLine().getStatusCode() != 200) {
                     final InputStream is = response.getEntity().getContent();
@@ -520,11 +527,34 @@ public class ISBCryptoToken extends BaseCryptoToken {
             }
             final String msg = intres.getLocalizedMessage("token.deleteentry", alias, getId());
             log.info(msg);
+ 
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
         } else {
             log.info("Trying to delete keystore entry with empty alias.");
         }
     }
 
+    //TODO Remove and replace function
+    /** 
+     * @param alias the key alias you want to access, or null if the key alias should be left out of the returned URL
+     * @return a URL to access a key (without trailing /), i.e. https://vaultname.vault.azure.net/keys/alias, or if alias is null https://vaultname.vault.azure.net/keys
+     */
+    /*protected static String createFullKeyURL(final String alias, final String vaultName) {
+        final String trailing;
+        if (alias == null) {
+            trailing = "/keys";
+        } else {
+            trailing = "/keys/" + alias;
+        }
+        if (StringUtils.contains(vaultName, '.')) {
+            return "https://" + vaultName + trailing;
+        } else {
+            return "https://" + vaultName + ".vault.azure.net" + trailing;
+        }
+    }*/
+    
     @Override
     public void generateKeyPair(KeyGenParams keyGenParams, String alias) throws InvalidAlgorithmParameterException, CryptoTokenOfflineException {
         
@@ -549,7 +579,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
         if (log.isDebugEnabled()) {
             log.debug(">generateKeyPair(keyspec): " + keySpec + ", " + alias);
         }
-        log.info(">generateKeyPair(keyspec): " + keySpec + ", " + alias);
         if (StringUtils.isNotEmpty(alias)) {
             checkAliasName(alias);
             // validate that keySpec matches some of the allowed Azure Key Vault key types/lengths.
@@ -564,7 +593,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
             // If it is pure numeric, it is an RSA key length
             if (NumberUtils.isNumber(formatCheckedKeySpec)) {
-                algorithm = keySpec;
+                algorithm = "RSA" + keySpec;
                 //str.append("\"").append(kty).append("\", \"key_size\": ").append(formatCheckedKeySpec);
             } else if(keySpec.toLowerCase().contains("25519")){
                 // Must be EC?
@@ -607,9 +636,9 @@ public class ISBCryptoToken extends BaseCryptoToken {
             
             //  generate key in our previously created key vault.
             final HttpPost request = new HttpPost(clientName + "/gpi/v1/keyring/generate");
+            
             request.setHeader("Content-Type", "application/json");
             try {
-                log.info(str.toString());
                 request.setEntity(new StringEntity(str.toString()));
                 isbAuthorizationRequest();
                 if (log.isDebugEnabled()) {
@@ -717,9 +746,61 @@ public class ISBCryptoToken extends BaseCryptoToken {
         return new ISBProvider.KeyVaultPrivateKey(alias, pubK.getAlgorithm(), this);
     }
 
+    //TODO complete function
     @Override
     public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
-        PublicKey publicKey = null;
+        
+        try {
+            isbAuthorizationRequest() ;
+            final HttpGet request1 = new HttpGet(getClientName()  + "/gpi/v1/keyring/get/keys/" + clientID + "/" + alias);
+            final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
+            final int requestStatusCode = response1.getStatusLine().getStatusCode();
+            
+            final InputStream is1 = response1.getEntity().getContent();
+            String json1 = IOUtils.toString(is1, StandardCharsets.UTF_8);
+            final JSONParser jsonParser = new JSONParser();
+            //final JSONArray value = (JSONArray) jsonParser.parse(json1);
+            //KeyAliasesCache newCache = new KeyAliasesCache();
+            //for (Object o : value) {
+                final JSONObject o1 = (JSONObject) jsonParser.parse(json1);
+                //final String kid = (String) o1.get("kid");
+                final JSONObject attributes = (JSONObject) o1.get("attributes");
+                String subjectPublicKeyInfoBase64 = (String)attributes.get("subjectPublicKeyInfo");
+                // Return only the key name, which is what is after the last /.
+                //final String alias = StringUtils.substringAfterLast(kid, "/");
+                //String alias = kid;
+                if (log.isDebugEnabled()) {
+                    log.debug("Adding alias to cache: '" + alias);
+                }
+                // Add a dummy public key, if there is not already a key in the existing cache for this alias, 
+                // if there is an existing then update with the real one to not break caching behavior
+                //final PublicKey oldKey = aliasCache.getEntry(alias.hashCode());
+                final PublicKey oldKey = getPublicKey(subjectPublicKeyInfoBase64 , new BouncyCastleProvider());
+                if (oldKey != null) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Adding alias to cache with existing public key: '" + alias);
+                    }
+                   
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Adding alias to cache wit dummy public key: '" + alias);
+                    }
+                    
+
+                }
+                this.status = STATUS_ACTIVE;
+                
+                return oldKey;
+            
+
+            
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+        
+        return null;
+        
+        /*PublicKey publicKey = null;
         if (StringUtils.isEmpty(alias)) {
             return null;
         }
@@ -731,6 +812,14 @@ public class ISBCryptoToken extends BaseCryptoToken {
             }
             try {
                 // connect to Azure and retrieve public key, use empty version string to get last version (don't check for existing key versions to save a round trip)
+                //final HttpGet request = null;
+                //get/keys/{ringname}/{label}
+                final StringBuilder str = new StringBuilder("{\"id\": ");
+                str.append("\"").append(clientID);
+                str.append("\",\"attributes\":{");
+                str.append("\"label\":").append("\"").append(alias).;
+                str.append(isKeyVaultUseKeyBinding("}}"))
+                //TODO
                 final HttpGet request = new HttpGet(createFullKeyURL(alias, getKeyVaultName()) + "/?api-version=7.2");
                 try (final CloseableHttpResponse response = isbHttpRequest(request)) {
                     final InputStream is = response.getEntity().getContent();
@@ -808,25 +897,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 log.debug("Getting public key from cache for alias " + alias);
             }
             return aliasCache.getEntry(alias.hashCode());
-        }
-    }
-
-    /** 
-     * @param alias the key alias you want to access, or null if the key alias should be left out of the returned URL
-     * @return a URL to access a key (without trailing /), i.e. https://vaultname.vault.azure.net/keys/alias, or if alias is null https://vaultname.vault.azure.net/keys
-     */
-    protected static String createFullKeyURL(final String alias, final String vaultName) {
-        final String trailing;
-        if (alias == null) {
-            trailing = "/keys";
-        } else {
-            trailing = "/keys/" + alias;
-        }
-        if (StringUtils.contains(vaultName, '.')) {
-            return "https://" + vaultName + trailing;
-        } else {
-            return "https://" + vaultName + ".vault.azure.net" + trailing;
-        }
+        }*/
     }
 
     /** Makes a REST API call to Azure, the REST call may need an authorizationToken, and if one does not exist (in this class) one is retrieved.
@@ -851,7 +922,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
         try {
             final CloseableHttpResponse response = httpRequestWithAuthHeader(request);
             final int requestStatusCode = response.getStatusLine().getStatusCode();
-            log.info(requestStatusCode);
             if (requestStatusCode == 401) {
                 log.info("Access denied calling Key Vault '" + getKeyVaultName()
                         + "', trying to get authentication URI and fetch authorization token.");
@@ -917,7 +987,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
     public CloseableHttpResponse httpRequestWithAuthHeader(HttpRequestBase request) throws IOException {
         // Set the cached authorization token if we have any. If the token has expired, or we don't have a cached token, it will return http 401 and we can get a new one
         request.setHeader("Authorization", authorizationHeader);
-        log.info(authorizationHeader);
         if (log.isDebugEnabled()) {
             log.debug("Request: " + request.toString());
         }
@@ -985,7 +1054,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             parameters.add(new BasicNameValuePair("password", clientSecret));
             parameters.add(new BasicNameValuePair("username",clientUserID));
             parameters.add(new BasicNameValuePair("grant_type","password"));
-            log.info("Using client_id and client_secret: rdcosta@gmail.com'");
+
             if (log.isDebugEnabled()) {
                 log.debug("Using client_id and client_secret: '" + clientID
                         + (StringUtils.isNotEmpty(clientSecret) ? ":<nologgingcleartextpasswords>'" : ":<empty pwd>"));
@@ -1021,13 +1090,13 @@ public class ISBCryptoToken extends BaseCryptoToken {
         }
         //parameters.add(new BasicNameValuePair("resource", oauthResource));
         request.setEntity(new UrlEncodedFormEntity(parameters));
-        log.info("Authorization request: " + request.toString());
+
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
             
         }
         try (final CloseableHttpResponse authResponse = authHttpClient.execute(request)) {
-            log.info("Response.toString: " + authResponse.toString());
+
             final int authStatusCode = authResponse.getStatusLine().getStatusCode();
             if (log.isDebugEnabled()) {
                 log.debug("Status code for authorization request is: " + authStatusCode);
@@ -1036,7 +1105,6 @@ public class ISBCryptoToken extends BaseCryptoToken {
             final String json = IOUtils.toString(authResponse.getEntity().getContent(), StandardCharsets.UTF_8);
             if (log.isDebugEnabled()) {
                 log.debug("Authorization JSON response: " + json);
-                log.info("Authorization JSON response: " + json);
             }
             final JSONParser jsonParser = new JSONParser();
             final JSONObject parse = (JSONObject) jsonParser.parse(json);
@@ -1047,13 +1115,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
                 throw new CryptoTokenAuthenticationFailedException("ISB Crypto Token authorization denied, JSON response: " + json);
             } else if (authStatusCode == 200) {
                 final String accessToken = (String) parse.get("access_token");
-                authorizationHeader = "Bearer " + accessToken;
-                log.info(authorizationHeader);
+                authorizationHeader = "Bearer " + accessToken;        
                 if (log.isDebugEnabled()) {
                     log.debug("Authorization header from authentication response: " + authorizationHeader);
                 }
             } else {
-                log.info("");
                 throw new CryptoTokenAuthenticationFailedException(
                         "ISB Crypto Token authorization failed with unknown response code " + authStatusCode + ", JSON response: " + json);
             }
@@ -1111,13 +1177,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
         
         
         request.setEntity(new UrlEncodedFormEntity(parameters));
-        log.info("Authorization request: " + request.toString());
         if (log.isDebugEnabled()) {
             log.debug("Authorization request: " + request.toString());
             
         }
         try (final CloseableHttpResponse authResponse = authHttpClient.execute(request)) {
-            log.info("Response.toString: " + authResponse.toString());
             final int authStatusCode = authResponse.getStatusLine().getStatusCode();
             if (log.isDebugEnabled()) {
                 log.debug("Status code for authorization request is: " + authStatusCode);

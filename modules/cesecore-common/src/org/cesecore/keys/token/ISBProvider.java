@@ -172,14 +172,13 @@ public class ISBProvider extends Provider {
                 final StringBuilder str = new StringBuilder("{\"attributes\": ");
                 str.append(reqJson);
                 str.append("}");
-                log.info(str.toString());
-                
 
                 privateKey.getCryptoToken().isbAuthorizationRequest() ;
                 final HttpPost  request1 = new HttpPost(this.privateKey.getCryptoToken().getClientName() + "/gpi/v1/keyring/sign/sign/");
                 request1.setHeader("Content-Type", "application/json");
                 request1.setEntity(new StringEntity(str.toString()));
                 if (log.isDebugEnabled()) {
+                    log.debug(str.toString());
                     log.debug("engineSign Request: " + request1.toString()+", "+privateKey.toString());
                     log.debug("engineSign Request JSON: " + reqJson+", "+privateKey.toString());
                 }
@@ -193,7 +192,7 @@ public class ISBProvider extends Provider {
                         log.debug("Response.toString: " + response.toString());
                         log.debug("Response JSON: " + json);
                     }
-                    log.info("Response JSON: " + json);
+
                     if (statusCode != 200) {
                         throw new SignatureException("Signing failed with status code " + statusCode + ", and response JSON: " + json);
                     }
