@@ -234,10 +234,15 @@ public class ISBProvider extends Provider {
                         
                         int nLen = 64; 
                         
+                    }else if(azureSignAlg.startsWith("RS")) {
+                        
+                        int nLen = 512; 
+                        
                     }
                     return bytes;
                 }
             } catch (CryptoTokenAuthenticationFailedException |  IOException | ParseException e) {
+                e.printStackTrace();
                 throw new SignatureException(e);
             }
         }
