@@ -753,11 +753,13 @@ public class ISBCryptoToken extends BaseCryptoToken {
         try {
             isbAuthorizationRequest() ;
             final HttpGet request1 = new HttpGet(getClientName()  + "/gpi/v1/keyring/get/keys/" + clientID + "/" + alias);
+            System.out.println(getClientName()  + "/gpi/v1/keyring/get/keys/" + clientID + "/" + alias);
             final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request1);
             final int requestStatusCode = response1.getStatusLine().getStatusCode();
             
             final InputStream is1 = response1.getEntity().getContent();
             String json1 = IOUtils.toString(is1, StandardCharsets.UTF_8);
+            System.out.println(json1);
             final JSONParser jsonParser = new JSONParser();
             //final JSONArray value = (JSONArray) jsonParser.parse(json1);
             //KeyAliasesCache newCache = new KeyAliasesCache();
