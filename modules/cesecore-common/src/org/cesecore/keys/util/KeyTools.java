@@ -1232,18 +1232,7 @@ public final class KeyTools {
         final byte input[] = "Lillan gick pa vagen ut, motte dar en katt...".getBytes();
         final byte signBV[];
         final String testSigAlg;
-        
-        final StringWriter sw = new StringWriter();
-        try( final PrintWriter pw = new PrintWriter(sw) ) {
-            pw.println("Testing a key:");
-            pw.println(String.format("\tTesting keys with algorithm: %s", pub.getAlgorithm()));
-            pw.println(String.format("\tprovider: %s", sProvider));
-            pw.println(String.format("\tprivateKey: %s", priv));
-            pw.println(String.format("\tprivateKey class: %s", priv.getClass().getName()));
-            pw.println(String.format("\tpublicKey: %s", pub));
-            pw.println(String.format("\tpublicKey class: %s", pub.getClass().getName()));
-            pw.flush();
-        }
+       
         try {
             if (log.isDebugEnabled()) {
                 final StringWriter sw = new StringWriter();
@@ -1270,8 +1259,8 @@ public final class KeyTools {
                 System.out.println(testSigAlg);
                 System.out.println("Created signature of size: " + signBV.length);
                 System.out.println("Created signature: " + new String(Hex.encode(signBV)));
-                System.out.println(publicKey.toString());
-                System.out.println(publicKey.getAlgorithm());
+                System.out.println(pub.toString());
+                System.out.println(pub.getAlgorithm());
                 if (signBV == null) {
                     throw new InvalidKeyException("Result from signing is null.");
                 }
