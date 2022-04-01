@@ -1270,7 +1270,7 @@ public final class KeyTools {
                 System.out.println(testSigAlg);
                 System.out.println("Created signature of size: " + signBV.length);
                 System.out.println("Created signature: " + new String(Hex.encode(signBV)));
-                System.out.println(publicKey.toString();
+                System.out.println(publicKey.toString());
                 System.out.println(publicKey.getAlgorithm());
                 if (signBV == null) {
                     throw new InvalidKeyException("Result from signing is null.");
@@ -1291,7 +1291,7 @@ public final class KeyTools {
                 signature.initVerify(pub);
                 signature.update(input);
                 if (!signature.verify(signBV)) {
-                    System.out.println(signature.verify(signBV);
+                    System.out.println(signature.verify(signBV));
                     throw new InvalidKeyException("Signature was not correctly verified.");
                 }
             }
