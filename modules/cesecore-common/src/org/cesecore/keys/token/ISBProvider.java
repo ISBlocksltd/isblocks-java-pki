@@ -131,7 +131,8 @@ public class ISBProvider extends Provider {
                
                 // Create hash value of the data to be signed
                 final byte[] signInput;
-                if (hashAlg != null) {
+                //The ISB Vault does all the hashing
+                /*if (hashAlg != null) {
                     try {
                         final MessageDigest digest = MessageDigest.getInstance(hashAlg, BouncyCastleProvider.PROVIDER_NAME);
                         signInput = digest.digest(tbs.toByteArray());
@@ -143,7 +144,7 @@ public class ISBProvider extends Provider {
                 } else {
              
                     signInput = tbs.toByteArray();
-                }
+                }*/
                
                 final HashMap<String, String> map = new HashMap<>();
                 // Signature algorithms, https://docs.microsoft.com/en-us/rest/api/keyvault/sign/sign#jsonwebkeysignaturealgorithm
@@ -201,6 +202,7 @@ public class ISBProvider extends Provider {
                     final JSONObject attributes  = (JSONObject) parse.get("attributes");
                     final String signature = (String) attributes.get("signedData");
                     String value = signature; 
+                    System.out.println("Signature response base64 value: " + value);
                     if (log.isDebugEnabled()) {
                         log.debug("Signature response base64 value: " + value);
                     }
