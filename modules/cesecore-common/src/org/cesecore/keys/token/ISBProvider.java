@@ -130,7 +130,7 @@ public class ISBProvider extends Provider {
                 //final HttpPost request = new HttpPost(privateKey.getKeyURL() + "/sign?api-version=7.2");
                
                 // Create hash value of the data to be signed
-                final byte[] signInput;
+                final byte[] signInput = tbs.toByteArray();
                 //The ISB Vault does all the hashing
                 /*if (hashAlg != null) {
                     try {
