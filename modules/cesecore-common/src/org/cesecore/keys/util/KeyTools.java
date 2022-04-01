@@ -1273,11 +1273,10 @@ public final class KeyTools {
                 }
                 signature.initVerify(pub);
                 signature.update(input);
-                //TODO SHA256WithRSA returns false for no reason
-                if (!testSigAlg.contains("SHA256WithRSA")) {
-                    if (!signature.verify(signBV)) {
-                        throw new InvalidKeyException("Signature was not correctly verified.");
-                    }
+
+                if (!signature.verify(signBV)) {
+                    throw new InvalidKeyException("Signature was not correctly verified.");
+
                 }
 
             }
