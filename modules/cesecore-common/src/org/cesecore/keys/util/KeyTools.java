@@ -1232,7 +1232,6 @@ public final class KeyTools {
         final byte input[] = "Lillan gick pa vagen ut, motte dar en katt...".getBytes();
         final byte signBV[];
         final String testSigAlg;
-       
         try {
             if (log.isDebugEnabled()) {
                 final StringWriter sw = new StringWriter();
@@ -1254,7 +1253,6 @@ public final class KeyTools {
                 final List<String> availableSignAlgorithms = AlgorithmTools.getSignatureAlgorithms(pub);
                 SignWithWorkingAlgorithm.doSignTask(availableSignAlgorithms, getProvider(sProvider), operation);
                 signBV = operation.getSignature();
-                
                 testSigAlg = operation.getSignatureAlgorithm();
                 if (signBV == null) {
                     throw new InvalidKeyException("Result from signing is null.");
@@ -1273,12 +1271,9 @@ public final class KeyTools {
                 }
                 signature.initVerify(pub);
                 signature.update(input);
-
                 if (!signature.verify(signBV)) {
                     throw new InvalidKeyException("Signature was not correctly verified.");
-
                 }
-
             }
         } catch (InvalidKeyException e) {
             throw e;
