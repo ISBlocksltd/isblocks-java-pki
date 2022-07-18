@@ -499,13 +499,6 @@
 				replacement-context-root="/ejbca/msae"
 		/>
 		<war-replacement-in-module
-               	replacement-tag="!--@cits.war@-->"
-              	replacement-file="${eardd.src}/META-INF/application.xml"
-                replacement-enabled="${mod.cits.exists}"
-       	        replacement-web-uri="cits.war"
-				replacement-context-root="/ejbca/its"
-		/>
-		<war-replacement-in-module
                 	replacement-tag="!--@est.war@-->"
                 	replacement-file="${eardd.src}/META-INF/application.xml"
 	                replacement-enabled="${mod.est.exists}"
@@ -566,10 +559,10 @@
         	<!-- The place where to find plugins -->
 		    <zipfileset dir="${ejbca.plugin.gen.path}" erroronmissingdir="false"/>
             <zipfileset prefix="lib" dir="${lib}">
-                <include name="bcpkix-jdk18on-*.jar"/>
-                <include name="bcprov-jdk18on-*.jar"/>
-                <include name="bctls-jdk18on-*.jar"/>
-				<include name="bcutil-jdk18on-*.jar"/>
+                <include name="bcpkix-jdk15on-*.jar"/>
+                <include name="bcprov-jdk15on-*.jar"/>
+                <include name="bctls-jdk15on-*.jar"/>
+				<include name="bcutil-jdk15on-*.jar"/>
                 <include name="cert-cvc-*.jar" />
             	<!-- JBoss EAP 6 comes with a new Log4j and there may be issues if we bundle it. -->
                 <include name="log4j-*.jar" unless="jbosseap6-specials"/>
@@ -648,7 +641,6 @@
         		<include name="${in-test-mode-include}systemtests-common.jar"/>
             	<include name="ssh.war" />
             	<include name="msae.war" />
-            	<include name="cits.war" />
             </fileset>
         	
         	<fileset dir="${ejbca.home}/lib/swagger">
@@ -688,14 +680,10 @@
 	            <include name="ejbca-ejb.jar" />
 				<include name="acme-common.jar" />
         		<include name="ejbca-rest-common.jar" />
-        		<include name="ejbca-rest-certificate.jar" />
-        		<include name="ejbca-rest-configdump.jar" />
-        		<include name="ejbca-rest-ca.jar" />
         		<include name="ejbca-rest-cryptotoken.jar" />
         		<include name="ejbca-rest-camanagement.jar" />
         		<include name="ejbca-rest-endentity.jar" />
         		<include name="ejbca-ssh.jar" />
-        		<include name="ejbca-cits.jar" />
         	</zipfileset>
             <!-- Include XStream for the use from statedump-ejb.jar -->
             <zipfileset prefix="lib" dir="${lib}/xstream" erroronmissingdir="false">
@@ -1072,7 +1060,6 @@
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/ejbca/core/ejb/ca/caadmin/CVCCAsTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/ejbca/ui/cli/ca/CaInitCvcCommandTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-ejb-cli/src/org/ejbca/ui/cli/ca/CaImportCVCCACommand.java"/>
-				<exclude unless="edition.is.ee" name="modules/ejbca-ejb-cli/src/org/ejbca/ui/cli/config/oauth/**"/>
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/ejbca/ui/cli/ca/CaImportCVCCACommandTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/ejbca/core/ejb/ca/sign/SignSessionCvcTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/cesecore/certificates/ca/CaCvcSessionTest.java"/>
@@ -1091,7 +1078,6 @@
                 <exclude unless="edition.is.ee" name="modules/admin-gui/src/org/ejbca/ui/web/admin/peerconnector/**"/>
                 <exclude unless="edition.is.ee" name="modules/admin-gui/resources/peerconnector/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/admin-gui/src/org/ejbca/ui/web/admin/acme/AcmeConfigMBean.java"/>
-				<exclude unless="edition.is.ee" name="modules/admin-gui/src/org/ejbca/ui/web/admin/acme/AcmeAliasConfigMBean.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-common-web/src/org/ejbca/core/model/services/workers/PreCertificateRevocationWorker.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-ejb/src/org/ejbca/core/protocol/scep/ScepRaModeExtension.java"/>
                 <exclude unless="edition.is.ee" name="modules/systemtests/src-test/org/ejbca/core/protocol/scep/ProtocolScepHttpRATest.java"/>
@@ -1110,21 +1096,16 @@
                 <exclude unless="edition.is.ee" name="modules/cesecore-common/src/org/cesecore/certificates/certificate/certextensions/BasicCVCertificateExtension.java"/>
                 <exclude unless="edition.is.ee" name="modules/configdump/**"/>
                 <exclude unless="edition.is.ee" name="modules/unidfnr/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-ca/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-camanagement/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-configdump/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-cryptotoken/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-endentity/**"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CaRestResourceSwagger.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CaManagementRestResourceSwagger.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/ConfigdumpRestResourceSwagger.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CryptoTokenRestResourceSwagger.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/EndEntityRestResourceSwagger.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaRestResourceUnitTest.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaRestResourceSystemTest.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaManagementRestResourceSystemTest.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CryptoTokenRestResourceSystemTest.java"/>
-                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/EndEntityRestResourceSystemTest.java"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-rest-common/**"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/**"/>
+		    	<exclude unless="edition.is.ee" name="modules/ejbca-rest-cryptotoken/**"/>
+		    	<exclude unless="edition.is.ee" name="modules/ejbca-rest-camanagement/**"/>
+		    	<exclude unless="edition.is.ee" name="modules/ejbca-rest-endentity/**"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-common/src/org/ejbca/util/swagger/SnakeCaseConverter.java"/>
+                <exclude unless="edition.is.ee" name="lib/ext/jackson2/**"/>
+                <exclude unless="edition.is.ee" name="lib/ext/resteasy-jaxrs-lib/**"/>
+                <exclude unless="edition.is.ee" name="lib/ext/swagger docs/**"/>
+                <exclude unless="edition.is.ee" name="lib/ext/swagger/**"/>
                 <exclude unless="edition.is.ee" name="modules/plugins-ee/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/ssh/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/cesecore-common/src/org/cesecore/keys/token/p11ng/**"/>
@@ -1132,7 +1113,6 @@
 		    	<exclude unless="edition.is.ee" name="modules/ejbca-ejb-cli/src/org/ejbca/ui/cli/cryptotoken/CryptoTokenChangeAuthDataCommand.java"/>
                 <exclude unless="edition.is.ee" name="modules/cesecore-common/src-test/org/cesecore/keys/token/p11ng/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/msae/**"/>
-		    	<exclude unless="edition.is.ee" name="modules/cits/**"/>
                 <!-- List of modules to exclude from non-eIDAS editions -->
 		    	<!-- Exclude standard values if eIDAS edition for which we will include the updated version below -->
                 <exclude if="build.contains.eidas" name="src/java/defaultvalues.properties"/> 
@@ -1555,10 +1535,6 @@ SHA-256 checksum: ${cesecorebinSHA256}
     <target name="msae.war">
         <ant dir="modules" target="msae" />
     </target>
-	
-    <target name="cits.war">
-        <ant dir="modules" target="cits" />
-    </target>
 
     <target name="healthcheck.war">
     	<ant dir="modules" target="healthcheck-ejbca-war" />
@@ -1661,6 +1637,10 @@ SHA-256 checksum: ${cesecorebinSHA256}
 
 	<target name="externalra-scep-deploy" description="Deploy the EJBCA External RA StandAlone SCEP application (Enterprise Edition Only)" depends="externalra:check,externalra-scep,deprecated:check">
 		<antcall target="jee:deploy-scep-war" />
+	</target>
+
+	<target name="batchenrollment-gui" description="Build the EJBCA Batch Enrollment StandAlone GUI application" depends="ejbcaws.client, deprecated:check">
+    	<ant dir="modules" target="batchenrollment-gui"/>
 	</target>
 
 	<!-- Target that copies all org.cesecore java files from EJBCA to cesecore (if it is in a subdirectory cesecore above ejbca dir).

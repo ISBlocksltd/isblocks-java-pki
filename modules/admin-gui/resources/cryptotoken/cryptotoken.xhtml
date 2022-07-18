@@ -389,25 +389,7 @@
                         value="#{cryptoTokenMBean.currentCryptoToken.ISBClientName}"
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
                 </h:panelGroup>
-                <!-- Keycloak Client Name-->
-               	<h:panelGroup id="currentCryptoTokenISBKCClientNamePanelGroup"
-                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
-                    <h:outputLabel id="currentCryptoTokenISBKCClientNameLabel"
-                        for="currentCryptoTokenISBClientName"
-                        value="#{web.text.CRYPTOTOKEN_ISB_KCCLIENTNAME} " />
-                    <h:outputText id="currentCryptoTokenISBKCClientName" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
-                </h:panelGroup>
-                <h:panelGroup
-                    rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
-                    <h:inputText
-                        value="#{cryptoTokenMBean.currentCryptoToken.ISBKCClientName}"
-                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
-                        disabled="#{!cryptoTokenMBean.allowedToModify}" />
-                    <h:outputText
-                        value="#{cryptoTokenMBean.currentCryptoToken.ISBKCClientName}"
-                        rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
-                </h:panelGroup>
-                <!-- Keycloak User ID-->
+                
                 <h:panelGroup id="currentCryptoTokenISBUserIDPanelGroup"
                     rendered="#{cryptoTokenMBean.currentCryptoToken.showISBCryptoToken}">
                     <h:outputLabel id="currentCryptoTokenISBUserIDLabel"

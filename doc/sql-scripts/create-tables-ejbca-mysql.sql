@@ -332,7 +332,6 @@ CREATE TABLE UserData (
     clearPassword VARCHAR(250) BINARY,
     endEntityProfileId INT(11) NOT NULL,
     extendedInformationData LONGTEXT,
-    hardTokenIssuerId INT(11) NOT NULL,
     keyStorePassword VARCHAR(250) BINARY,
     passwordHash VARCHAR(250) BINARY,
     rowProtection LONGTEXT,

@@ -1304,9 +1304,9 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         }
     }
 
-    public List<ProtocolGuiInfo> getAvailableProtocolInfos() {
+    public ArrayList<ProtocolGuiInfo> getAvailableProtocolInfos() {
         ArrayList<ProtocolGuiInfo> protocolInfos = new ArrayList<>();
-        LinkedHashMap<String, Boolean> allPC = (LinkedHashMap<String, Boolean>) getAvailableProtocolsConfiguration().getAllProtocolsAndStatus();
+        LinkedHashMap<String, Boolean> allPC = getAvailableProtocolsConfiguration().getAllProtocolsAndStatus();
         for (Entry<String, Boolean> entry : allPC.entrySet()) {
             protocolInfos.add(new ProtocolGuiInfo(entry.getKey(), entry.getValue()));
         }
@@ -1318,13 +1318,13 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         return getEjbcaWebBean().isRunningEnterprise();
     }
 
-    /** @return true if ACME is enabled. Should be false for EJBCA CE */
-    public boolean isAcmeAvailable() {
+    /** @return true if REST is enabled. Should be false for EJBCA CE */
+    public boolean isRestAvailable() {
         return getEjbcaWebBean().isRunningEnterprise();
     }
 
-    /** @return true if running Enterprise Edition */
-    public boolean isRunningEnterprise() {
+    /** @return true if ACME is enabled. Should be false for EJBCA CE */
+    public boolean isAcmeAvailable() {
         return getEjbcaWebBean().isRunningEnterprise();
     }
 
@@ -1342,7 +1342,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         public ProtocolGuiInfo(String protocol, boolean enabled) {
             this.protocol = protocol;
             this.enabled = enabled;
-            this.url = AvailableProtocols.getContextPathByName(protocol, isRunningEnterprise());
+            this.url = AvailableProtocols.getContextPathByName(protocol);
             this.available = true;
         }
 
@@ -1369,16 +1369,22 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
             if (protocol.equals(AvailableProtocols.MSAE.getName()) && !isMSAESettingsAvailable()) {
                 available = false;
             }
-            if (protocol.equals(AvailableProtocols.REST_CA_MANAGEMENT.getName()) && !isRunningEnterprise()) {
+            if (protocol.equals(AvailableProtocols.REST_CA_MANAGEMENT.getName()) && !isRestAvailable()) {
                 available = false;
             }
-            if (protocol.equals(AvailableProtocols.REST_CONFIGDUMP.getName()) && !isRunningEnterprise()) {
+            if (protocol.equals(AvailableProtocols.REST_CONFIGDUMP.getName()) && !isRestAvailable()) {
                 available = false;
             }
-            if (protocol.equals(AvailableProtocols.REST_CRYPTOTOKEN_MANAGEMENT.getName()) && !isRunningEnterprise()) {
+            if (protocol.equals(AvailableProtocols.REST_CRYPTOTOKEN_MANAGEMENT.getName()) && !isRestAvailable()) {
                 available = false;
             }
-            if (protocol.equals(AvailableProtocols.REST_ENDENTITY_MANAGEMENT.getName()) && !isRunningEnterprise()) {
+            if (protocol.equals(AvailableProtocols.REST_CERTIFICATE_MANAGEMENT.getName()) && !isRestAvailable()) {
+                available = false;
+            }
+            if (protocol.equals(AvailableProtocols.REST_ENDENTITY_MANAGEMENT.getName()) && !isRestAvailable()) {
+                available = false;
+            }
+            if (protocol.equals(AvailableProtocols.REST_CERTIFICATE_MANAGEMENT_V2.getName()) && !isRestAvailable()) {
                 available = false;
             }
             if (protocol.equals(AvailableProtocols.ACME.getName()) && !isAcmeAvailable()) {
@@ -2106,7 +2112,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.EKUCONFIGURATION_VIEW.resource())) {
             availableTabs.add("Extended Key Usages");
         }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource()) && getEjbcaWebBean().isRunningEnterprise()) {
+        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource())) {
             availableTabs.add("Trusted OAuth Providers");
         }
         if (getEjbcaWebBean().isRunningBuildWithCA()

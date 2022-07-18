@@ -360,7 +360,6 @@ CREATE TABLE UserData (
     clearPassword VARCHAR(256),
     endEntityProfileId INTEGER NOT NULL,
     extendedInformationData CLOB,
-    hardTokenIssuerId INTEGER NOT NULL,
     keyStorePassword VARCHAR(256),
     passwordHash VARCHAR(256),
     rowProtection CLOB(10 K),

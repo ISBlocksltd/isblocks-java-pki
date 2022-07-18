@@ -23,13 +23,12 @@ import org.cesecore.accounts.AccountBinding;
 import org.cesecore.accounts.AccountBindingBase;
 import org.cesecore.util.ui.DynamicUiModel;
 import org.cesecore.util.ui.DynamicUiModelAware;
-import org.cesecore.util.ui.IndexedDynamicUiModel;
 import org.ejbca.configdump.ConfigdumpProperty;
 
 /**
  * Base class for all ACME external account bindings (EAB) strategy objects.
  */
-public abstract class AcmeExternalAccountBindingBase extends AccountBindingBase implements AcmeExternalAccountBinding, DynamicUiModelAware, IndexedDynamicUiModel {
+public abstract class AcmeExternalAccountBindingBase extends AccountBindingBase implements AcmeExternalAccountBinding, DynamicUiModelAware {
 
     private static final long serialVersionUID = 3018936825885684493L;
 

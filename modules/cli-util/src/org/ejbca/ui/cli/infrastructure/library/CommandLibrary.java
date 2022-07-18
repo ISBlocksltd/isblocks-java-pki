@@ -50,11 +50,9 @@ public enum CommandLibrary {
             if (root == null) {
                 root = new Branch("");
                 ServiceLoader<? extends CliCommandPlugin> serviceLoader = ServiceLoader.load(CliCommandPlugin.class);
-                boolean offlineError = false;
-                for (Iterator<? extends CliCommandPlugin> iterator = serviceLoader.iterator(); iterator.hasNext();) {
-                    CliCommandPlugin command;
-                    try {
-                        command = iterator.next();
+                try {
+                    for (Iterator<? extends CliCommandPlugin> iterator = serviceLoader.iterator(); iterator.hasNext();) {
+                        CliCommandPlugin command = iterator.next();
                         root.addChild(command, command.getCommandPath());
                         if (!command.getCommandPathAliases().isEmpty()) {
                             Iterator<String[]> aliasIterator = command.getCommandPathAliases().iterator();
@@ -62,22 +60,16 @@ public enum CommandLibrary {
                                 root.addChild(command, true, aliasIterator.next());
                             }
                         }
-                    } catch (ServiceConfigurationError e) {
-                        if (e.getCause() instanceof NoSuchEJBException || (e.getCause() instanceof IllegalStateException
-                                && e.getCause().getLocalizedMessage().contains("No EJB receiver"))) {
-                            if (!offlineError) {
-                                log.error("Error: CLI could not contact EJBCA instance. Either your application server is not up and running,"
-                                        + " EJBCA has not been deployed successfully, or some firewall rule is blocking the CLI from the application server."
-                                        + "\n\n" + "Please be aware that most commands will not work without the application server available.\n");
-                                offlineError = true;
-                            }
-
-                        } else {
-                            throw e;
-                        }
                     }
+                } catch (ServiceConfigurationError e) {
+                    if (e.getCause() instanceof NoSuchEJBException
+                            || (e.getCause() instanceof IllegalStateException && e.getCause().getLocalizedMessage().contains("No EJB receiver"))) {
+                        log.error("Error: CLI could not contact EJBCA instance. Either your application server is not up and running,"
+                            + " EJBCA has not been deployed successfully, or some firewall rule is blocking the CLI from the application server.");
+                        System.exit(1);
+                    }
+                    throw e;
                 }
-
             }
         }
     }
@@ -283,40 +275,31 @@ public enum CommandLibrary {
                 return CommandResult.SUCCESS;
             } else {
                 String key = parameters[0].toLowerCase(Locale.ENGLISH);
-                try {
-                    if (commands.containsKey(key) || alternateCommands.containsKey(key)) {
-                        if (isAlternate) {
-                            INSTANCE.log.warn(
-                                    "WARNING: The path used is an unlisted alternate path and may be deprecated, and may cease to exist at any point."
-                                            + " Please start using the updated path as soon as possible.\n");
-                        }
-                        if (alternateCommands.containsKey(key)) {
-                            INSTANCE.log.warn("WARNING: The command \"" + key
-                                    + "\" used is an unlisted alternate command and may be deprecated, and may cease to exist at any point."
-                                    + " Please start using the updated command \"" + alternateCommands.get(key).getMainCommand()
-                                    + "\" as soon as possible.\n");
-                            return alternateCommands.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
-                        } else {
-                            return commands.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
-                        }
-                    } else if (!subBranches.containsKey(key)) {
-                        if (isAlternate) {
-                            INSTANCE.log.warn(
-                                    "WARNING: The path used is an unlisted alternate path and may be deprecated, and may cease to exist at any point."
-                                            + " Please start using the updated path as soon as possible.\n");
-                        }
-                        printManPage();
-                        return CommandResult.SUCCESS;
-                    } else {
-                        return subBranches.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
+                if (commands.containsKey(key) || alternateCommands.containsKey(key)) {
+                    if (isAlternate) {
+                        INSTANCE.log.warn(
+                                "WARNING: The path used is an unlisted alternate path and may be deprecated, and may cease to exist at any point."
+                                        + " Please start using the updated path as soon as possible.\n");
                     }
-                } catch (ServiceConfigurationError e) {
-                    if (e.getCause() instanceof NoSuchEJBException
-                            || (e.getCause() instanceof IllegalStateException && e.getCause().getLocalizedMessage().contains("No EJB receiver"))) {
-                        return CommandResult.CLI_FAILURE;
+                    if (alternateCommands.containsKey(key)) {
+                        INSTANCE.log.warn("WARNING: The command \"" + key
+                                + "\" used is an unlisted alternate command and may be deprecated, and may cease to exist at any point."
+                                + " Please start using the updated command \"" + alternateCommands.get(key).getMainCommand()
+                                + "\" as soon as possible.\n");
+                        return alternateCommands.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
                     } else {
-                        throw e;
+                        return commands.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
                     }
+                } else if (!subBranches.containsKey(key)) {
+                    if (isAlternate) {
+                        INSTANCE.log.warn(
+                                "WARNING: The path used is an unlisted alternate path and may be deprecated, and may cease to exist at any point."
+                                        + " Please start using the updated path as soon as possible.\n");
+                    }
+                    printManPage();
+                    return CommandResult.SUCCESS;
+                } else {
+                    return subBranches.get(key).execute(Arrays.copyOfRange(parameters, 1, parameters.length));
                 }
             }
         }

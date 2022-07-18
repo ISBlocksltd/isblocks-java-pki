@@ -16,13 +16,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -73,9 +72,6 @@ import org.cesecore.certificates.certificate.certextensions.CertificateExtension
 import org.cesecore.certificates.certificate.certextensions.standard.CabForumOrganizationIdentifier;
 import org.cesecore.certificates.certificate.certextensions.standard.NameConstraint;
 import org.cesecore.certificates.certificate.certextensions.standard.QcStatement;
-import org.cesecore.certificates.certificate.request.PKCS10RequestMessage;
-import org.cesecore.certificates.certificate.request.RequestMessage;
-import org.cesecore.certificates.certificate.request.RequestMessageUtils;
 import org.cesecore.certificates.certificateprofile.CertificateProfile;
 import org.cesecore.certificates.crl.RevocationReasons;
 import org.cesecore.certificates.endentity.EndEntityConstants;
@@ -207,7 +203,6 @@ public class EnrollMakeNewRequestBean implements Serializable {
     private int requestId;
     private boolean requestPreviewMoreDetails;
     private boolean setCustomValidity;
-    private Boolean useKeyRecoverable = null;
     private UIComponent subjectDnMessagesComponent;
     private UIComponent userCredentialsMessagesComponent;
     private UIComponent confirmPasswordComponent;
@@ -810,10 +805,6 @@ public class EnrollMakeNewRequestBean implements Serializable {
                 isCabfOrganizationIdentifierRendered() || getEndEntityProfile().isIssuanceRevocationReasonUsed();
     }
 
-    public boolean isRenderOtherData() {
-        return getEndEntityProfile().isKeyRecoverableUsed();
-    }
-    
     public boolean isRenderCertExtensionDataField() {
         return getEndEntityProfile().getUseExtensiondata();
     }
@@ -861,34 +852,36 @@ public class EnrollMakeNewRequestBean implements Serializable {
     public void uploadCsr() {
         subjectDn = null;
         validateCsr(certificateRequest);
-        // If "Provided by User" key generation is selected, try fill Subject DN fields from CSR (Overwrite the fields set by previous CSR upload if any)
+        //If PROVIDED BY USER key generation is selected, try fill Subject DN fields from CSR (Overwrite the fields set by previous CSR upload if any)
         if (getSelectedKeyPairGenerationEnum() != null && KeyPairGeneration.PROVIDED_BY_USER.equals(getSelectedKeyPairGenerationEnum()) && algorithmFromCsr != null) {
-            final RequestMessage certRequest = RequestMessageUtils.parseRequestMessage(getCertificateRequest().getBytes(StandardCharsets.UTF_8));
-            if (certRequest.getRequestX500Name() != null) {
-                populateRequestFields(RequestFieldType.DN, certRequest.getRequestX500Name().toString(), getSubjectDn().getRequiredFieldInstances());
+            final PKCS10CertificationRequest pkcs10CertificateRequest = CertTools.getCertificateRequestFromPem(getCertificateRequest());
+            if (pkcs10CertificateRequest.getSubject() != null) {
+                populateRequestFields(RequestFieldType.DN, pkcs10CertificateRequest.getSubject().toString(), getSubjectDn().getRequiredFieldInstances());
                 getSubjectDn().update();
             }
-            this.subjectAlternativeName = null;
-            this.subjectDirectoryAttributes = null;
-            // Populate SAN and Subject Directory Attributes, but only if it is a PKCS#10 (X.509) request
-            final PKCS10CertificationRequest pkcs10CertificateRequest = CertTools.getCertificateRequestFromPem(getCertificateRequest());
-            if (pkcs10CertificateRequest != null) {
-                final Extension sanExtension = CertTools.getExtension(pkcs10CertificateRequest, Extension.subjectAlternativeName.getId());
-                if (sanExtension != null) {
-                    populateRequestFields(RequestFieldType.AN, CertTools.getAltNameStringFromExtension(sanExtension), getSubjectAlternativeName().getRequiredFieldInstances());
-                    getSubjectAlternativeName().update();
+            final Extension sanExtension = CertTools.getExtension(pkcs10CertificateRequest, Extension.subjectAlternativeName.getId());
+            if (sanExtension != null) {
+                populateRequestFields(RequestFieldType.AN, CertTools.getAltNameStringFromExtension(sanExtension), getSubjectAlternativeName().getRequiredFieldInstances());
+                getSubjectAlternativeName().update();
+            } else {
+                // If an updated CSR did not have any AN, make sure we clean the fields
+                this.subjectAlternativeName = null;
+            }
+            final Extension subjectDirectoryAttributes = CertTools.getExtension(pkcs10CertificateRequest, Extension.subjectDirectoryAttributes.getId());
+            if (subjectDirectoryAttributes != null) {
+                ASN1Primitive parsedValue = (ASN1Primitive) subjectDirectoryAttributes.getParsedValue();
+                try {
+                    final String subjectDirectoryAttributeString = SubjectDirAttrExtension.getSubjectDirectoryAttribute(parsedValue);
+                    populateRequestFields(RequestFieldType.DIRATTR, subjectDirectoryAttributeString, getSubjectDirectoryAttributes().getRequiredFieldInstances());
+                    getSubjectDirectoryAttributes().update();
+                } catch (ParseException | IllegalArgumentException e) {
+                    log.debug("Invalid Subject Directory Attributes Extension: " + e.getMessage());
+                    // If an updated CSR did not have any Directory attributes, make sure we clean the fields
+                    this.subjectDirectoryAttributes = null;
                 }
-                final Extension subjectDirectoryAttributes = CertTools.getExtension(pkcs10CertificateRequest, Extension.subjectDirectoryAttributes.getId());
-                if (subjectDirectoryAttributes != null) {
-                    ASN1Primitive parsedValue = (ASN1Primitive) subjectDirectoryAttributes.getParsedValue();
-                    try {
-                        final String subjectDirectoryAttributeString = SubjectDirAttrExtension.getSubjectDirectoryAttribute(parsedValue);
-                        populateRequestFields(RequestFieldType.DIRATTR, subjectDirectoryAttributeString, getSubjectDirectoryAttributes().getRequiredFieldInstances());
-                        getSubjectDirectoryAttributes().update();
-                    } catch (ParseException | IllegalArgumentException e) {
-                        log.debug("Invalid Subject Directory Attributes Extension: " + e.getMessage());
-                    }
-                }
+            } else {
+                // If an updated CSR did not have any Directory attributes, make sure we clean the fields
+                this.subjectDirectoryAttributes = null;
             }
 
             uploadCsrDoneRendered = true;
@@ -984,7 +977,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
             raLocaleBean.addMessageError(ENROLL_USERNAME_ALREADY_EXISTS, username);
         }
     }
-    
+
     /**
      * Calculate the summary of holders from the current state for the certificate Subjects
      */
@@ -1150,8 +1143,8 @@ public class EnrollMakeNewRequestBean implements Serializable {
         endEntityInformation.setTimeModified(new Date());
         endEntityInformation.setType(new EndEntityType(EndEntityTypes.ENDUSER));
         // sendnotification, keyrecoverable and print must be set after setType, because it adds to the type
-        endEntityInformation.setKeyRecoverable(getKeyRecoverableUse());
         endEntityInformation.setSendNotification(getSendNotification());
+        endEntityInformation.setKeyRecoverable(getEndEntityProfile().isKeyRecoverableUsed() && getEndEntityProfile().isKeyRecoverableDefault() && !endEntityInformation.getKeyRecoverable());
         endEntityInformation.setPrintUserData(false); // TODO not sure...
         endEntityInformation.setTokenType(tokenType);
         
@@ -1161,7 +1154,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
         random.nextBytes(randomData);
         if (StringUtils.isBlank(endEntityInformation.getUsername())) {
             String autousername = new String(Hex.encode(randomData));
-            while (raMasterApiProxyBean.searchUserWithoutViewEndEntityAccessRule(raAuthenticationBean.getAuthenticationToken(), autousername) != null) {
+            while (raMasterApiProxyBean.searchUser(raAuthenticationBean.getAuthenticationToken(), autousername) != null) {
                 if (log.isDebugEnabled()) {
                     log.debug("Autogenerated username '" + autousername + "' is already reserved. Generating the new one...");
                 }
@@ -1191,7 +1184,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
             }
         } else if (KeyPairGeneration.PROVIDED_BY_USER.equals(getSelectedKeyPairGenerationEnum())) {
             try {
-                endEntityInformation.getExtendedInformation().setCertificateRequest(getCertificateRequestBytes());
+                endEntityInformation.getExtendedInformation().setCertificateRequest(CertTools.getCertificateRequestFromPem(getCertificateRequest()).getEncoded());
             } catch (IOException e) {
                 raLocaleBean.addMessageError(ENROLL_INVALID_CERTIFICATE_REQUEST);
                 return null;
@@ -1213,25 +1206,25 @@ public class EnrollMakeNewRequestBean implements Serializable {
                     log.info("Certificate could not be generated for end entity with username " + endEntityInformation.getUsername());
                 }
             } else if (KeyPairGeneration.PROVIDED_BY_USER.equals(getSelectedKeyPairGenerationEnum())) {
-                endEntityInformation.getExtendedInformation().setCertificateRequest(getCertificateRequestBytes());
+                endEntityInformation.getExtendedInformation().setCertificateRequest(CertTools.getCertificateRequestFromPem(getCertificateRequest()).getEncoded());
                 final byte[] certificateDataToDownload = raMasterApiProxyBean.addUserAndCreateCertificate(raAuthenticationBean.getAuthenticationToken(),
                         endEntityInformation, false);
                 if (certificateDataToDownload == null) {
                     raLocaleBean.addMessageError("enroll_certificate_could_not_be_generated", endEntityInformation.getUsername(), "Check server log");
                     log.info("Certificate could not be generated for end entity with username " + endEntityInformation.getUsername());
                 } else if (tokenDownloadType == TokenDownloadType.PEM_FULL_CHAIN) {
-                    final Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, Certificate.class);
+                    X509Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, X509Certificate.class);
                     LinkedList<Certificate> chain = new LinkedList<>(getCAInfo().getCertificateChain());
                     chain.addFirst(certificate);
                     ret = CertTools.getPemFromCertificateChain(chain);
                 } else if (tokenDownloadType == TokenDownloadType.PKCS7) {
-                    final Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, Certificate.class);
+                    X509Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, X509Certificate.class);
                     LinkedList<Certificate> chain = new LinkedList<>(getCAInfo().getCertificateChain());
                     chain.addFirst(certificate);
                     ret = CertTools.getPemFromPkcs7(CertTools.createCertsOnlyCMS(CertTools.convertCertificateChainToX509Chain(chain)));
                 } else if (tokenDownloadType == TokenDownloadType.PEM) {
-                    final Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, Certificate.class);
-                    ret = CertTools.getPemFromCertificateChain(Arrays.asList(certificate));
+                    X509Certificate certificate = CertTools.getCertfromByteArray(certificateDataToDownload, X509Certificate.class);
+                    ret = CertTools.getPemFromCertificateChain(Arrays.asList((Certificate) certificate));
                 } else {
                     ret = certificateDataToDownload;
                 }
@@ -1262,12 +1255,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
                 } else if (errorCode.equals(ErrorCode.USER_DOESNT_FULFILL_END_ENTITY_PROFILE)) {
                     raLocaleBean.addMessageError("enroll_user_does_not_fulfill_profile", cleanExceptionMessage(e));
                     log.info("End entity information does not fulfill profile: " + e.getMessage() + ", " + errorCode);
-                } else if (errorCode.equals(ErrorCode.NAMECONSTRAINT_VIOLATION)) {
-                    raLocaleBean.addMessageError("enroll_invalid_name_constraint_violation", e.getMessage().replaceFirst("^[^:]*Exception: ", ""));
-                    log.info("End entity information does not fulfill profile: " + e.getMessage() + ", " + errorCode);
-                }
-                
-                else {
+                } else {
                     reportGenericError(errorCode, e);
                 }
             } else {
@@ -1276,6 +1264,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
         } catch (Exception e) {
             reportGenericError(null, e);
         } finally {
+            cleanUpEndEntities(errorCode, ret);
             endEntityInformation.setUsername(StringUtils.EMPTY);
         }
         return ret;
@@ -1334,9 +1323,31 @@ public class EnrollMakeNewRequestBean implements Serializable {
     private String cleanExceptionMessage(final Throwable e) {
         String message = ExceptionUtils.getRootCauseMessage(e);
         if (message != null) {
-            message = message.replaceFirst("^[^:]*Exception: ", "");
+            message = message.replaceFirst("^[^:]*EndEntityProfileValidationException: ", "");
         }
         return message;
+    }
+
+    /**
+     * End entity clean-up must be done if enrollment could not be completed (but end-entity has been added and wasn't already existing)
+     */
+    private void cleanUpEndEntities(final ErrorCode errorCode, final byte[] certificate) {
+        if (certificate == null) {
+            if ((errorCode == null || !errorCode.equals(ErrorCode.USER_ALREADY_EXISTS))
+                    && !KeyPairGeneration.POSTPONE.equals(getSelectedKeyPairGenerationEnum())) {
+                EndEntityInformation endEntityInfoFromCA = raMasterApiProxyBean.searchUser(raAuthenticationBean.getAuthenticationToken(),
+                        endEntityInformation.getUsername());
+                try {
+                    if (endEntityInfoFromCA != null && endEntityInfoFromCA.getStatus() != EndEntityConstants.STATUS_GENERATED) {
+                        raMasterApiProxyBean.deleteUser(raAuthenticationBean.getAuthenticationToken(), endEntityInformation.getUsername());
+                    }
+                } catch (AuthorizationDeniedException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        } else {
+            return; // We simply return since certificate is generated and EE must not be deleted.
+        }
     }
 
     /**
@@ -1496,25 +1507,22 @@ public class EnrollMakeNewRequestBean implements Serializable {
      */
     public final void validateCsr(String csrValue) throws ValidatorException {
         algorithmFromCsr = null;
-        if (csrValue == null || csrValue.length() > EnrollMakeNewRequestBean.MAX_CSR_LENGTH) {
-            if (csrValue == null) {
-                log.info("CSR uploaded was null");
-            } else {
-                log.info("CSR uploaded was too large: " + csrValue.length());
-            }
+        if (csrValue != null && csrValue.length() > EnrollMakeNewRequestBean.MAX_CSR_LENGTH) { 
+           log.info("CSR uploaded was too large: " + csrValue.length());
             raLocaleBean.addMessageError(ENROLL_INVALID_CERTIFICATE_REQUEST);
             throw new ValidatorException(new FacesMessage(raLocaleBean.getMessage(ENROLL_INVALID_CERTIFICATE_REQUEST)));
         }
-        final RequestMessage certRequest = RequestMessageUtils.parseRequestMessage(csrValue.getBytes(StandardCharsets.UTF_8));
-        if (certRequest == null) {
+        PKCS10CertificationRequest pkcs10CertificateRequest = CertTools.getCertificateRequestFromPem(csrValue);
+        if (pkcs10CertificateRequest == null) {
             raLocaleBean.addMessageError(ENROLL_INVALID_CERTIFICATE_REQUEST);
             throw new ValidatorException(new FacesMessage(raLocaleBean.getMessage(ENROLL_INVALID_CERTIFICATE_REQUEST)));
         }
+        
         //Get public key algorithm from CSR and check if it's allowed in certificate profile
+        final JcaPKCS10CertificationRequest jcaPKCS10CertificationRequest = new JcaPKCS10CertificationRequest(pkcs10CertificateRequest);
         try {
-            final PublicKey publicKey = certRequest.getRequestPublicKey();
-            final String keySpecification = AlgorithmTools.getKeySpecification(publicKey);
-            final String keyAlgorithm = AlgorithmTools.getKeyAlgorithm(publicKey);
+            final String keySpecification = AlgorithmTools.getKeySpecification(jcaPKCS10CertificationRequest.getPublicKey());
+            final String keyAlgorithm = AlgorithmTools.getKeyAlgorithm(jcaPKCS10CertificationRequest.getPublicKey());
 
             final CertificateProfile certificateProfile = getCertificateProfile();
             if (!certificateProfile.isKeyTypeAllowed(keyAlgorithm, keySpecification)) {
@@ -1523,31 +1531,21 @@ public class EnrollMakeNewRequestBean implements Serializable {
             }
             algorithmFromCsr = keyAlgorithm + " " + keySpecification;// Save for later use
 
+            certificateRequest = csrValue;
+
+            PublicKey publicKey = jcaPKCS10CertificationRequest.getPublicKey();
             publicKeyModulus = KeyTools.getKeyModulus(publicKey);
 
             publicKeyExponent = KeyTools.getKeyPublicExponent(publicKey);
-            sha256Fingerprint = KeyTools.getSha256Fingerprint(csrValue);
-            signature = extractSignatureFromCsr(certRequest);
-            certificateRequest = csrValue;
+            sha256Fingerprint = KeyTools.getSha256Fingerprint(certificateRequest);
+            signature = KeyTools.getCertificateRequestSignature(jcaPKCS10CertificationRequest);
+
         } catch (InvalidKeyException | NoSuchAlgorithmException e) {
             raLocaleBean.addMessageError("enroll_unknown_key_algorithm");
             throw new ValidatorException(new FacesMessage(raLocaleBean.getMessage("enroll_unknown_key_algorithm")));
-        } catch (NoSuchProviderException e) {
-            throw new IllegalStateException(e);
         }
     }
 
-    private String extractSignatureFromCsr(final RequestMessage certRequest) {
-        if (certRequest instanceof PKCS10RequestMessage) {
-            final PKCS10CertificationRequest p10 = ((PKCS10RequestMessage) certRequest).getCertificationRequest();
-            final JcaPKCS10CertificationRequest jcaPKCS10CertificationRequest = new JcaPKCS10CertificationRequest(p10);
-            return KeyTools.getCertificateRequestSignature(jcaPKCS10CertificationRequest);
-        } else {
-            // CVC requests can have multiple signatures. SSH requests don't have a signature.
-            log.debug("Not showing signature field for this type of CSR");
-            return null;
-        }
-    }
 
     //-----------------------------------------------------------------------------------------------
     // Getters and setters
@@ -2247,26 +2245,6 @@ public class EnrollMakeNewRequestBean implements Serializable {
     public String getCabfOrganizationIdentifierRegex() {
         return CabForumOrganizationIdentifier.VALIDATION_REGEX;
     }
-    
-    public boolean isUseKeyRecoverable() {
-        if (getEndEntityProfile()!= null) {
-            return getEndEntityProfile().isKeyRecoverableUsed();
-        }
-        return false;
-    }
-    
-    public boolean getKeyRecoverableUse() {
-        if (useKeyRecoverable != null) {
-            return useKeyRecoverable;
-        } else if (getEndEntityProfile() != null) {
-            return (getEndEntityProfile().isKeyRecoverableUsed() && getEndEntityProfile().isKeyRecoverableDefault());
-        }
-        return false;
-    }
-    
-    public void setKeyRecoverableUse(boolean keyRecoverable) {
-        useKeyRecoverable = keyRecoverable;
-    }
 
     /**
      * @return the confirmPassword
@@ -2363,14 +2341,11 @@ public class EnrollMakeNewRequestBean implements Serializable {
         if (subjectDn == null) {
             final EndEntityProfile endEntityProfile = getEndEntityProfile();
             final CertificateProfile certificateProfile = getCertificateProfile();
-            final CAInfo cainfo = getCAInfo();
-            if (endEntityProfile != null && certificateProfile != null && cainfo != null) {
+            final X509CAInfo x509cainfo = (X509CAInfo) getCAInfo();
+            if (endEntityProfile != null && certificateProfile != null && x509cainfo != null) {
                 subjectDn = new SubjectDn(endEntityProfile);
-                if (cainfo instanceof X509CAInfo) {
-                    final X509CAInfo x509cainfo = (X509CAInfo) cainfo;
-                    subjectDn.setLdapOrder(x509cainfo.getUseLdapDnOrder() && certificateProfile.getUseLdapDnOrder());
-                    subjectDn.setNameStyle(x509cainfo.getUsePrintableStringSubjectDN() ? PrintableStringNameStyle.INSTANCE : CeSecoreNameStyle.INSTANCE);
-                }
+                subjectDn.setLdapOrder(x509cainfo.getUseLdapDnOrder() && certificateProfile.getUseLdapDnOrder());
+                subjectDn.setNameStyle(x509cainfo.getUsePrintableStringSubjectDN() ? PrintableStringNameStyle.INSTANCE : CeSecoreNameStyle.INSTANCE);
                 for (EndEntityProfile.FieldInstance instance: subjectDn.getRequiredFieldInstances()) {
                     if (isDnEmail(instance)) {
                         instance.setUseDataFromEmailField(true);
@@ -2544,10 +2519,6 @@ public class EnrollMakeNewRequestBean implements Serializable {
         return certificateRequest;
     }
 
-    private byte[] getCertificateRequestBytes() throws IOException {
-        return RequestMessageUtils.getRequestBytes(getCertificateRequest().getBytes(StandardCharsets.UTF_8));
-    }
-
     /**
      * @param certificateRequest the certificateRequest to set
      */
@@ -2687,7 +2658,7 @@ public class EnrollMakeNewRequestBean implements Serializable {
                 for (String namespace : eabNamespaces) {
                     ids.addAll(eabConfiguration.getEABMap().get(namespace));
                 }
-                if (!ids.isEmpty()) {
+                if (ids != null && !ids.isEmpty()) {
                     eabIdAutoCompleteSelectItems.add(new SelectItem("..."));
                     ids.stream().filter(e -> e.toLowerCase().startsWith(value.toLowerCase())).sorted()
                             .limit(32).forEach(v -> eabIdAutoCompleteSelectItems.add(new SelectItem(v)));

@@ -544,11 +544,10 @@ public class EndEntityProfileHelper extends BaseHelper {
     }
 
     /**
-     * Triggers the checkbox 'Use'and 'Default' for 'Send Notification'.
+     * Triggers the checkbox 'Use' for 'Send Notification'.
      */
     public void triggerSendNotification() {
         clickLink(Page.INPUT_USE_SEND_NOTIFICATION);
-        clickLink(Page.INPUT_DEFAULT_SEND_NOTIFICATION);        
         // Add a timeout to load button 'Add' after click
         findElement(Page.BUTTON_ADD_NOTIFICATION);
     }
@@ -584,15 +583,6 @@ public class EndEntityProfileHelper extends BaseHelper {
      */
     public void setNotificationSender(final int inputIndex, String sender) {
         fillInput(Page.getNotificationSenderByIndex(inputIndex), sender);
-    }
-    
-    /**
-     * Fills Notification Recipient
-     *
-     * @param inputIndex the index of notification to check
-     */
-    public void setNotificationRecipient(final int inputIndex, String recipient ) {
-        fillInput(Page.getNotificationRecipientByIndex(inputIndex), recipient);
     }
 
     public void setSubjectAlternativeName(final String subjectAltName) {

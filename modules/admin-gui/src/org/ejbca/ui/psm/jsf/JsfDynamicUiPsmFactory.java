@@ -63,23 +63,13 @@ public class JsfDynamicUiPsmFactory {
      * and an optional help text below the UI component.
      * @param panelGrid the panel grid instance to (re-)build.
      * @param model DynamicUiModel to extract properties from
-     * @param i18nPrefix=prefix[0] the name prefix for the I18N message resources and keyPrefix=prefix[0] for UI element ID prefix.
-     * 
+     * @param i18nPrefix the name prefix for the I18N message resources.
      * @throws DynamicUiModelException if the PSM could not be created by the dynamic UI model.
      */
     public static final void initGridInstance(final HtmlPanelGrid panelGrid, final DynamicUiModel model,
-            final String... prefix) throws DynamicUiModelException {
-        
-        String i18nPrefix = "";
-        if (prefix != null | prefix.length > 0) {
-            i18nPrefix = prefix[0];
-        }
-        String keyPrefix = "";
-        if (prefix != null | prefix.length > 1) {
-            keyPrefix = prefix[1];
-        }
+            final String i18nPrefix) throws DynamicUiModelException {
         if (log.isDebugEnabled()) {
-            log.debug("Build dynamic UI model PSM " + model + ", i18nPrefix is '" + i18nPrefix + "', keyPrefix is '" + keyPrefix + "'.");
+            log.debug("Build dynamic UI model PSM " + model + ", i18nPrefix is '" + i18nPrefix + "'.");
         }
         panelGrid.clearInitialState();
         panelGrid.getFacets().clear();
@@ -92,7 +82,7 @@ public class JsfDynamicUiPsmFactory {
             panelGrid.getChildren().add(label);
 
             if (!property.isLabelOnly()) {
-                final UIComponentBase component = createComponentInstance(i18nPrefix, keyPrefix, property);
+                final UIComponentBase component = createComponentInstance(i18nPrefix, property);
                 final String helpText = getHelpText(i18nPrefix, property.getName());
                 if (helpText != null) {
                     final HtmlPanelGrid innerGrid = new HtmlPanelGrid();
@@ -127,7 +117,7 @@ public class JsfDynamicUiPsmFactory {
      * @return the JSF component.
      * @throws DynamicUiModelException if a component instance could not be created (i.e. does not exist).
      */
-    public static final UIComponentBase createComponentInstance(final String i18nPrefix, final String keyPrefix, final DynamicUiProperty<?> property)
+    public static final UIComponentBase createComponentInstance(final String i18nPrefix, final DynamicUiProperty<?> property)
             throws DynamicUiModelException {
         final String hint = property.getRenderingHint();
         UIComponentBase component = null;
@@ -136,49 +126,49 @@ public class JsfDynamicUiPsmFactory {
         }
         else if (property.isBooleanType()) {
             if (DynamicUiProperty.RENDER_CHECKBOX.equals(hint)) {
-                component = createCheckBoxInstance(keyPrefix, property);
+                component = createCheckBoxInstance(property);
             }
         } else if (property.isStringType()) {
             if (DynamicUiProperty.RENDER_TEXTFIELD.equals(hint)) {
-                component = createTextFieldInstance(keyPrefix, property);
+                component = createTextFieldInstance(property);
             } else if (DynamicUiProperty.RENDER_TEXTAREA.equals(hint)) {
-                component = createTextAreaInstance(keyPrefix, property);
+                component = createTextAreaInstance(property);
             } else if (DynamicUiProperty.RENDER_SELECT_ONE.equals(hint)) {
-                component = createDropDownBoxInstance(keyPrefix, property);
+                component = createDropDownBoxInstance(property);
             } else if (DynamicUiProperty.RENDER_SELECT_MANY.equals(hint)) {
-                component = createListBoxInstance(keyPrefix, property);
+                component = createListBoxInstance(property);
             } else if (DynamicUiProperty.RENDER_BUTTON.equals(hint)) {
-                component = createButtonInstance(i18nPrefix, keyPrefix, property);
+                component = createButtonInstance(i18nPrefix, property);
             } else if (DynamicUiProperty.RENDER_LABEL.equals(hint)) {
-                component = createLabelInstance(keyPrefix, property);
+                component = createLabelInstance(property);
             }
         } else if (property.isDateType()) {
-            component = createTextFieldInstance(keyPrefix, property);
+            component = createTextFieldInstance(property);
         } else if (property.isIntegerType()) {
             if (DynamicUiProperty.RENDER_TEXTFIELD.equals(hint)) {
-                component = createIntegerTextFieldInstance(keyPrefix, property);
+                component = createIntegerTextFieldInstance(property);
             } else if (DynamicUiProperty.RENDER_SELECT_ONE.equals(hint)) {
-                component = createIntegerDropDownBoxInstance(keyPrefix, property);
+                component = createIntegerDropDownBoxInstance(property);
             } else if (DynamicUiProperty.RENDER_SELECT_MANY.equals(hint)) {
-                component = createIntegerListBoxInstance(keyPrefix, property);
+                component = createIntegerListBoxInstance(property);
             }
         } else if (property.isBigIntegerType()) {
             if (DynamicUiProperty.RENDER_TEXTFIELD.equals(hint)) {
-                component = createBigIntegerTextFieldInstance(keyPrefix, property);
+                component = createBigIntegerTextFieldInstance(property);
             }
         } else if (property.isFloatType()) {
             if (DynamicUiProperty.RENDER_TEXTFIELD.equals(hint)) {
-                component = createFloatTextFieldInstance(keyPrefix, property);
+                component = createFloatTextFieldInstance(property);
             }
         } else if (property.isFileType()) {
             if (DynamicUiProperty.RENDER_TEXTFIELD.equals(hint)) {
-                component = createTextFieldInstance(keyPrefix, property);
+                component = createTextFieldInstance(property);
             } else if (DynamicUiProperty.RENDER_FILE_CHOOSER.equals(hint)) {
-                component = createFileChooserInstance(keyPrefix, property);
+                component = createFileChooserInstance(property);
             }
         } else if (property.isByteArrayType()) {
             if (DynamicUiProperty.RENDER_FILE_CHOOSER.equals(hint)) {
-                component = createFileChooserInstance(keyPrefix, property);
+                component = createFileChooserInstance(property);
             }
         }
         if (component == null) {
@@ -196,10 +186,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the label instance.
      */
-    public static final HtmlOutputText createLabelInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlOutputText createLabelInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlOutputLabel result = new JsfDynamicUiHtmlOutputLabel();
         result.setDynamicUiProperty(property);
-        setUIOutputAttributes(result, keyPrefix, property);
+        setUIOutputAttributes(result, property);
         result.setEscape(property.isEscape());
         return result;
     }
@@ -209,10 +199,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the check box instance.
      */
-    public static final HtmlSelectBooleanCheckbox createCheckBoxInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlSelectBooleanCheckbox createCheckBoxInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlSelectBooleanCheckbox result = new JsfDynamicUiHtmlSelectBooleanCheckbox();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         addAjaxListener(property, result, "click");
         return result;
@@ -223,10 +213,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the text area instance.
      */
-    public static final HtmlInputTextarea createTextAreaInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputTextarea createTextAreaInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputTextarea result = new JsfDynamicUiHtmlInputTextarea();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setCols(45);
         result.setRows(3);
@@ -238,10 +228,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the text field instance.
      */
-    public static final HtmlInputText createTextFieldInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputText createTextFieldInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputText result = new JsfDynamicUiHtmlInputText();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setSize(44);
         return result;
@@ -252,10 +242,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the text field instance.
      */
-    public static final HtmlInputText createIntegerTextFieldInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputText createIntegerTextFieldInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputText result = new JsfDynamicUiHtmlInputText();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setConverter(new IntegerConverter());
         result.setSize(12);
@@ -267,10 +257,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the text field instance.
      */
-    public static final HtmlInputText createBigIntegerTextFieldInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputText createBigIntegerTextFieldInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputText result = new JsfDynamicUiHtmlInputText();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setConverter(new BigIntegerConverter());
         result.setSize(44);
@@ -282,10 +272,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the text field instance.
      */
-    public static final HtmlInputText createFloatTextFieldInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputText createFloatTextFieldInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputText result = new JsfDynamicUiHtmlInputText();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setConverter(new FloatConverter());
         result.setSize(12);
@@ -297,10 +287,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the drop down box instance.
      */
-    public static final HtmlSelectOneMenu createDropDownBoxInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlSelectOneMenu createDropDownBoxInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlSelectOneMenu result = new JsfDynamicUiHtmlSelectOneMenu();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         final List<SelectItem> items = new ArrayList<>();
         if (property.isI18NLabeled()) {
@@ -327,8 +317,8 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the drop down box instance.
      */
-    public static final HtmlSelectOneMenu createIntegerDropDownBoxInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
-        final HtmlSelectOneMenu result = createDropDownBoxInstance(keyPrefix, property);
+    public static final HtmlSelectOneMenu createIntegerDropDownBoxInstance(final DynamicUiProperty<?> property) {
+        final HtmlSelectOneMenu result = createDropDownBoxInstance(property);
         result.setConverter(new IntegerConverter());
         return result;
     }
@@ -338,10 +328,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the list box instance.
      */
-    public static final HtmlSelectManyListbox createListBoxInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlSelectManyListbox createListBoxInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlSelectManyListbox result = new JsfDynamicUiHtmlSelectManyListbox();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         final List<SelectItem> items = new ArrayList<>();
         final Map<?, String> labels = property.getLabels();
@@ -360,8 +350,8 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the list box instance.
      */
-    public static final HtmlSelectManyListbox createIntegerListBoxInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
-        final HtmlSelectManyListbox result = createListBoxInstance(keyPrefix, property);
+    public static final HtmlSelectManyListbox createIntegerListBoxInstance(final DynamicUiProperty<?> property) {
+        final HtmlSelectManyListbox result = createListBoxInstance(property);
         result.setConverter(new IntegerConverter());
         return result;
     }
@@ -372,13 +362,9 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the command button instance.
      */
-    public static final HtmlCommandButton createButtonInstance(final String i18nPrefix, final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlCommandButton createButtonInstance(final String i18nPrefix, final DynamicUiProperty<?> property) {
         final HtmlCommandButton result = new HtmlCommandButton();
-        String name = property.getName();
-        if (keyPrefix != null && keyPrefix.length() > 0) {
-            name = name + "-" + keyPrefix;
-        }
-        result.setId(name);
+        result.setId(property.getName());
         result.setRendered(true);
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setValue(getText(i18nPrefix, (String) property.getValue()));
@@ -391,10 +377,10 @@ public class JsfDynamicUiPsmFactory {
      * @param property the dynamic UI property.
      * @return the file chooser instance.
      */
-    public static final HtmlInputFileUpload createFileChooserInstance(final String keyPrefix, final DynamicUiProperty<?> property) {
+    public static final HtmlInputFileUpload createFileChooserInstance(final DynamicUiProperty<?> property) {
         final JsfDynamicUiHtmlInputFileUpload result = new JsfDynamicUiHtmlInputFileUpload();
         result.setDynamicUiProperty(property);
-        setUIInputAttributes(result, keyPrefix, property);
+        setUIInputAttributes(result, property);
         result.setStorage("file");
         result.setDisabled(property.getDynamicUiModel().isDisabled() || property.isDisabled());
         result.setSize(44);
@@ -406,11 +392,8 @@ public class JsfDynamicUiPsmFactory {
      * @param component the component.
      * @param property the dynamic property.
      */
-    private static final void setBaseProperties(final UIComponentBase component, final String keyPrefix, final DynamicUiProperty<? extends Serializable> property) {
-        String name = property.getName();
-        if (keyPrefix != null && keyPrefix.length() > 0) {
-            name = name + "-" + keyPrefix;
-        }
+    private static final void setBaseProperties(final UIComponentBase component, final DynamicUiProperty<? extends Serializable> property) {
+        final String name = property.getName();
         component.setId(name);
         component.setRendered(true);
     }
@@ -420,13 +403,10 @@ public class JsfDynamicUiPsmFactory {
      * @param component the component.
      * @param property the dynamic property.
      */
-    private static final void setUIOutputAttributes(final UIOutput component, final String keyPrefix, final DynamicUiProperty<? extends Serializable> property) {
-        setBaseProperties(component, keyPrefix, property);
+    private static final void setUIOutputAttributes(final UIOutput component, final DynamicUiProperty<? extends Serializable> property) {
+        setBaseProperties(component, property);
         if (!property.getHasMultipleValues()) {
             component.setValue(property.getValue());
-            if (component instanceof JsfDynamicUiHtmlSelectBooleanCheckbox && property.getValue() instanceof Boolean) {
-                ((JsfDynamicUiHtmlSelectBooleanCheckbox) component).setSelected((Boolean) property.getValue());
-            }
         } else {
             component.setValue(property.getValues());
         }
@@ -437,8 +417,8 @@ public class JsfDynamicUiPsmFactory {
      * @param component the component.
      * @param property the dynamic property.
      */
-    private static final void setUIInputAttributes(final UIInput component, final String keyPrefix, final DynamicUiProperty<? extends Serializable> property) {
-        setUIOutputAttributes(component, keyPrefix, property);
+    private static final void setUIInputAttributes(final UIInput component, final DynamicUiProperty<? extends Serializable> property) {
+        setUIOutputAttributes(component, property);
         component.setRequired(property.isRequired());
         component.addValueChangeListener(new JsfDynamicUiValueChangeListener(property));
     }

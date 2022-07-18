@@ -89,13 +89,7 @@ public final class PurposeMapping {
     				properties);    		
     		addKey(CATokenConstants.CAKEYPURPOSE_CERTSIGN_STRING_NEXT,
     				CATokenConstants.CAKEYPURPOSE_CERTSIGN_NEXT,
-    				properties); 
-    		addKey(CATokenConstants.CAKEYPURPOSE_DEFAULT_STRING_PREVIOUS,
-                    CATokenConstants.CAKEYPURPOSE_DEFAULT_PREVIOUS,
-                    properties);            
-            addKey(CATokenConstants.CAKEYPURPOSE_DEFAULT_STRING_NEXT,
-                    CATokenConstants.CAKEYPURPOSE_DEFAULT_NEXT,
-                    properties); 
+    				properties);    		
     	}
     	defaultKeyAlias = defaultKeyAliasTmp!=null ? defaultKeyAliasTmp.trim() : null;
     } 

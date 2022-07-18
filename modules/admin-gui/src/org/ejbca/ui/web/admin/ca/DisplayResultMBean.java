@@ -105,12 +105,8 @@ public class DisplayResultMBean extends BaseManagedBean implements Serializable 
             binarylink = filePath + "/editcas/cacertreq?cmd=cert&format=binary";
             pkcs7link = filePath + "/editcas/cacertreq?cmd=certpkcs7";
         } else {
-            if(!caBean.isCaTypeCits()) {
-                pemlink = filePath + "/editcas/cacertreq?cmd=certreq";
-                binarylink = filePath + "/editcas/cacertreq?cmd=certreq&format=binary";
-            } else {
-                binarylink = filePath + "/editcas/cacertreq?cmd=itsecacsr&caname=" + caName;
-            }
+            pemlink = filePath + "/editcas/cacertreq?cmd=certreq";
+            binarylink = filePath + "/editcas/cacertreq?cmd=certreq&format=binary";
             pkcs7link = StringUtils.EMPTY;
         }
 
@@ -143,9 +139,5 @@ public class DisplayResultMBean extends BaseManagedBean implements Serializable 
     
     public boolean isRenderPkcs7Link() {
         return filemode == EditCaUtil.CERTGENMODE;
-    }
-    
-    public boolean isRenderPemLink() {
-        return pemlink!=null;
     }
 }

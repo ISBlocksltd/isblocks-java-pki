@@ -739,6 +739,8 @@ public class ScepConfiguration extends ConfigurationBase implements Serializable
         data.put(ALIAS_LIST, aliases);
     }
     
+    
+    
     /**
      * @return the configuration as a regular Properties object
      */

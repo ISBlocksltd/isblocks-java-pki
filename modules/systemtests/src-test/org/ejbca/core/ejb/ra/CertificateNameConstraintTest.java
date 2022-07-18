@@ -1116,11 +1116,11 @@ public class CertificateNameConstraintTest extends CaTestCase {
         List<String> formatedNCExcludedUpdated = new ArrayList<>();
         
         List<String> nameConstPermitted = new ArrayList<>();
-        nameConstPermitted.add("uri:.permit.this.com");
-        nameConstPermitted.add("uri:.allowthis.this.com");
+        nameConstPermitted.add("http://www.permit.this.com/abc");
+        nameConstPermitted.add("http://www.allowthis.this.com/abc");
 
         List<String> nameConstExcluded = new ArrayList<>();
-        nameConstExcluded.add("uri:.forbid.this.com");
+        nameConstExcluded.add("http://www.forbid.this.com/pqr");
         
         formatedNCPermittedUpdated.addAll(formatAllNameConstraints(nameConstPermitted));
         formatedNCExcludedUpdated.addAll(formatAllNameConstraints(nameConstExcluded));

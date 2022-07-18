@@ -12,32 +12,28 @@
  *************************************************************************/
 package org.cesecore.certificates.ocsp;
 
-import static org.junit.Assert.assertEquals;
-
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
-import org.bouncycastle.operator.OperatorCreationException;
 import org.cesecore.CesecoreException;
 import org.cesecore.authentication.tokens.AuthenticationToken;
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.certificates.ca.CADoesntExistsException;
-import org.cesecore.certificates.ca.CAExistsException;
 import org.cesecore.certificates.ca.CAInfo;
 import org.cesecore.certificates.ca.CAOfflineException;
 import org.cesecore.certificates.ca.CaSessionRemote;
@@ -47,9 +43,12 @@ import org.cesecore.certificates.ca.IllegalValidityException;
 import org.cesecore.certificates.ca.InvalidAlgorithmException;
 import org.cesecore.certificates.ca.SignRequestSignatureException;
 import org.cesecore.certificates.ca.X509CA;
+import org.cesecore.certificates.certificate.CertificateConstants;
 import org.cesecore.certificates.certificate.CertificateCreateException;
 import org.cesecore.certificates.certificate.CertificateCreateSessionRemote;
+import org.cesecore.certificates.certificate.CertificateDataWrapper;
 import org.cesecore.certificates.certificate.CertificateRevokeException;
+import org.cesecore.certificates.certificate.CertificateStoreSessionRemote;
 import org.cesecore.certificates.certificate.IllegalKeyException;
 import org.cesecore.certificates.certificate.InternalCertificateStoreSessionRemote;
 import org.cesecore.certificates.certificate.certextensions.CertificateExtensionException;
@@ -64,17 +63,16 @@ import org.cesecore.certificates.endentity.EndEntityConstants;
 import org.cesecore.certificates.endentity.EndEntityInformation;
 import org.cesecore.certificates.endentity.EndEntityTypes;
 import org.cesecore.config.OcspConfiguration;
+import org.cesecore.configuration.CesecoreConfigurationProxySessionRemote;
 import org.cesecore.keybind.CertificateImportException;
 import org.cesecore.keybind.InternalKeyBinding;
 import org.cesecore.keybind.InternalKeyBindingMgmtSessionRemote;
 import org.cesecore.keybind.InternalKeyBindingNameInUseException;
-import org.cesecore.keybind.InternalKeyBindingNonceConflictException;
 import org.cesecore.keybind.InternalKeyBindingStatus;
 import org.cesecore.keybind.InternalKeyBindingTrustEntry;
 import org.cesecore.keybind.impl.OcspKeyBinding;
 import org.cesecore.keys.token.CryptoTokenManagementSessionRemote;
 import org.cesecore.keys.token.CryptoTokenOfflineException;
-import org.cesecore.keys.token.IllegalCryptoTokenException;
 import org.cesecore.keys.token.KeyGenParams;
 import org.cesecore.keys.util.KeyTools;
 import org.cesecore.util.CertTools;
@@ -85,20 +83,18 @@ import org.ejbca.core.ejb.ca.caadmin.CAAdminSessionRemote;
 import org.ejbca.core.ejb.ca.sign.SignSessionRemote;
 import org.junit.Assert;
 
+import static org.junit.Assert.assertEquals;
+
 /**
+ * @version $Id$
  *
  */
-public final class OcspTestUtils {
+public class OcspTestUtils {
 
-    private static final String FOO123_PASSWORD = "foo123";
     private static final String PROPERTY_ALIAS = OcspKeyBinding.PROPERTY_NON_EXISTING_GOOD;
     public static final String OCSP_END_USER_NAME = "OcspSigningUser";
     private static final String CLIENTSSL_END_USER_NAME = "ClientSSLUser";
-    private static final String CLIENTSSL_END_USER_DN = "CN=clientSSLUser";
-
-    private OcspTestUtils() {
-        throw new IllegalStateException("This is utility class, not possible to instantiate it!");
-    }
+    private static final String CLIENTSSL_END_USER_DN = "CN=clientSSLUser";    
 
     public static void deleteCa(AuthenticationToken authenticationToken, X509CA x509ca) throws AuthorizationDeniedException {
         if (x509ca != null) {
@@ -120,18 +116,8 @@ public final class OcspTestUtils {
      * @param keyspec keyspec for new key binding crypto token, i. "RSA2048", "secp256r1"
      * @param signAlg  is the signature algorithm that this InternalKeyBinding will use for signatures (if applicable), i.e. AlgorithmConstants.SIGALG_SHA1_WITH_RSA
      * @return internalKeyBindingId
-     * @throws AuthorizationDeniedException 
-     * @throws InvalidAlgorithmParameterException 
-     * @throws CryptoTokenOfflineException 
-     * @throws InvalidKeyException 
-     * @throws InternalKeyBindingNonceConflictException 
-     * @throws InvalidAlgorithmException 
-     * @throws InternalKeyBindingNameInUseException 
      */
-    public static int createInternalKeyBinding(AuthenticationToken authenticationToken, int cryptoTokenId, String type, String testName,
-            String keyspec, String signAlg)
-            throws AuthorizationDeniedException, InvalidKeyException, CryptoTokenOfflineException, InvalidAlgorithmParameterException,
-            InternalKeyBindingNameInUseException, InvalidAlgorithmException, InternalKeyBindingNonceConflictException {
+    public static int createInternalKeyBinding(AuthenticationToken authenticationToken, int cryptoTokenId, String type, String testName, String keyspec, String signAlg) throws Exception {
         CryptoTokenManagementSessionRemote cryptoTokenManagementSession = EjbRemoteHelper.INSTANCE
                 .getRemoteSession(CryptoTokenManagementSessionRemote.class);
         InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
@@ -144,15 +130,17 @@ public final class OcspTestUtils {
         // Create a new InternalKeyBinding with a implementation specific property and bind it to the previously generated key
         final Map<String, Serializable> dataMap = new LinkedHashMap<>();
         dataMap.put(PROPERTY_ALIAS, Boolean.FALSE);
-        return internalKeyBindingMgmtSession.createInternalKeyBinding(authenticationToken, type, testName, InternalKeyBindingStatus.ACTIVE, null,
-                cryptoTokenId, testName, signAlg, dataMap, null);
+        int internalKeyBindinId = internalKeyBindingMgmtSession.createInternalKeyBinding(authenticationToken, type,
+                testName, InternalKeyBindingStatus.ACTIVE, null, cryptoTokenId, testName, signAlg, dataMap, null);
+        
+        return internalKeyBindinId;
     }
-
-    public static void updateInternalKeyBindingProperty(AuthenticationToken authenticationToken, int internalKeyBindinId, String nonExistingGood,
-            String nonExistingRevoked, String nonExistingUnauth) throws AuthorizationDeniedException, InternalKeyBindingNameInUseException {
+    
+    public static void updateInternalKeyBindingProperty(AuthenticationToken authenticationToken, int internalKeyBindinId,
+            String nonExistingGood, String nonExistingRevoked, String nonExistingUnauth) throws Exception {
         InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
                 .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
-
+        
         // Create a new InternalKeyBinding with a implementation specific property and bind it to the previously generated key
         InternalKeyBinding internalKeyBinding = internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken, internalKeyBindinId);
         internalKeyBinding.setProperty(OcspConfiguration.NON_EXISTING_IS_GOOD, nonExistingGood);
@@ -160,51 +148,48 @@ public final class OcspTestUtils {
         internalKeyBinding.setProperty(OcspConfiguration.NON_EXISTING_IS_UNAUTHORIZED, nonExistingUnauth);
 
         internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, internalKeyBinding);
+        return;
     }
-
-    /** Adds signOnBehalfEntries to a previously created OCSP key binding 
-     * @throws AuthorizationDeniedException 
-     * @throws InternalKeyBindingNameInUseException */
-    public static void addSignOnBehalfEntries(AuthenticationToken authenticationToken, int internalKeyBindinId,
-            List<InternalKeyBindingTrustEntry> signOcspResponseOnBehalf) throws AuthorizationDeniedException, InternalKeyBindingNameInUseException {
+    
+    /** Adds signOnBehalfEntries to a previously created OCSP key binding */
+    public static void addSignOnBehalfEntries(AuthenticationToken authenticationToken, int internalKeyBindinId, 
+            List<InternalKeyBindingTrustEntry> signOcspResponseOnBehalf) throws Exception {
         InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
                 .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
-        InternalKeyBinding keyBinding = internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken, internalKeyBindinId);
-        if (!keyBinding.getImplementationAlias().equalsIgnoreCase(OcspKeyBinding.IMPLEMENTATION_ALIAS)) {
+        InternalKeyBinding keyBinding = 
+                internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken, internalKeyBindinId);
+        if(!keyBinding.getImplementationAlias().equalsIgnoreCase(OcspKeyBinding.IMPLEMENTATION_ALIAS)) {
             return;
         }
         keyBinding.setSignOcspResponseOnBehalf(signOcspResponseOnBehalf);
         internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, keyBinding);
+        return;
     }
-
+                                    
+    
     /** @return the certificate fingerprint if an update was made */
     public static String updateInternalKeyBindingCertificate(AuthenticationToken authenticationToken, int internalKeyBindingId)
             throws AuthorizationDeniedException, CertificateImportException {
-        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
+        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE.getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
         return internalKeyBindingMgmtSession.updateCertificateForInternalKeyBinding(authenticationToken, internalKeyBindingId);
     }
 
     /** @return true if the status was modified */
-    public static boolean setInternalKeyBindingStatus(AuthenticationToken authenticationToken, int internalKeyBindingId,
-            InternalKeyBindingStatus newStatus) throws AuthorizationDeniedException {
-        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
+    public static boolean setInternalKeyBindingStatus(AuthenticationToken authenticationToken, int internalKeyBindingId, InternalKeyBindingStatus newStatus)
+            throws AuthorizationDeniedException {
+        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE.getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
         boolean statusChanged = internalKeyBindingMgmtSession.setStatus(authenticationToken, internalKeyBindingId, newStatus);
-        final InternalKeyBindingStatus currentStatus = internalKeyBindingMgmtSession
-                .getInternalKeyBindingInfo(authenticationToken, internalKeyBindingId).getStatus();
+        final InternalKeyBindingStatus currentStatus = internalKeyBindingMgmtSession.getInternalKeyBindingInfo(authenticationToken, internalKeyBindingId).getStatus();
         assertEquals("Unable to change status of InternalKeyBinding.", newStatus, currentStatus);
         return statusChanged;
     }
 
     /** Set the untilNextUpate for an OcspKeyBinding */
-    public static long setOcspKeyBindingUntilNextUpdate(AuthenticationToken authenticationToken, final int ocspKeyBindingId,
-            final long untilNextUpdate) throws AuthorizationDeniedException, InternalKeyBindingNameInUseException {
-        final InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
+    public static long setOcspKeyBindingUntilNextUpdate(AuthenticationToken authenticationToken, final int ocspKeyBindingId, final long untilNextUpdate)
+            throws AuthorizationDeniedException, InternalKeyBindingNameInUseException {
+        final InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE.getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
         // Configure the OcspKeyBinding's untilNextUpdate
-        final OcspKeyBinding ocspKeyBinding = (OcspKeyBinding) internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken,
-                ocspKeyBindingId);
+        final OcspKeyBinding ocspKeyBinding = (OcspKeyBinding) internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken, ocspKeyBindingId);
         final long oldValue = ocspKeyBinding.getUntilNextUpdate();
         ocspKeyBinding.setUntilNextUpdate(untilNextUpdate);
         internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, ocspKeyBinding);
@@ -213,11 +198,9 @@ public final class OcspTestUtils {
 
     public static long setOcspKeyBindingMaxAge(AuthenticationToken authenticationToken, int ocspKeyBindingId, long maxAge)
             throws AuthorizationDeniedException, InternalKeyBindingNameInUseException {
-        final InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
+        final InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE.getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
         // Configure the OcspKeyBinding's untilNextUpdate
-        final OcspKeyBinding ocspKeyBinding = (OcspKeyBinding) internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken,
-                ocspKeyBindingId);
+        final OcspKeyBinding ocspKeyBinding = (OcspKeyBinding) internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken, ocspKeyBindingId);
         final long oldValue = ocspKeyBinding.getMaxAge();
         ocspKeyBinding.setMaxAge(maxAge);
         internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, ocspKeyBinding);
@@ -241,16 +224,6 @@ public final class OcspTestUtils {
         internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, ocspKeyBinding);
     }
 
-    public static void disableOmitRevocationReasonUnespecified(final AuthenticationToken authenticationToken, final int ocspKeyBindingId)
-            throws InternalKeyBindingNameInUseException, AuthorizationDeniedException {
-        final InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
-        final OcspKeyBinding ocspKeyBinding = (OcspKeyBinding) internalKeyBindingMgmtSession.getInternalKeyBinding(authenticationToken,
-                ocspKeyBindingId);
-        ocspKeyBinding.setOmitReasonCodeEnabled(false);
-        internalKeyBindingMgmtSession.persistInternalKeyBinding(authenticationToken, ocspKeyBinding);
-    }
-
     public static X509Certificate createOcspSigningCertificate(AuthenticationToken authenticationToken, String username, String signerDN,
             int internalKeyBindingId, int caId) throws CustomCertificateSerialNumberException, IllegalKeyException, CADoesntExistsException,
             CertificateCreateException, AuthorizationDeniedException, CertificateExtensionException, CryptoTokenOfflineException,
@@ -259,79 +232,80 @@ public final class OcspTestUtils {
         return createOcspSigningCertificate(authenticationToken, username, signerDN, internalKeyBindingId, caId,
                 CertificateProfileConstants.CERTPROFILE_FIXED_OCSPSIGNER);
     }
-
+    
     public static X509Certificate createOcspSigningCertificate(AuthenticationToken authenticationToken, String username, String signerDN,
             int internalKeyBindingId, int caId, int certificateProfileId) throws AuthorizationDeniedException, CustomCertificateSerialNumberException,
             IllegalKeyException, CADoesntExistsException, CertificateCreateException, CertificateExtensionException, CryptoTokenOfflineException,
             SignRequestSignatureException, IllegalNameException, CertificateRevokeException, CertificateSerialNumberException,
             IllegalValidityException, CAOfflineException, InvalidAlgorithmException {
         return createOcspSigningCertificate(authenticationToken, username, signerDN, internalKeyBindingId, caId, certificateProfileId, null);
-
+        
     }
-
+    
     public static X509Certificate createOcspSigningCertificate(AuthenticationToken authenticationToken, String username, String signerDN,
-            int internalKeyBindingId, int caId, int certificateProfileId, Date expirationTime) throws AuthorizationDeniedException,
-            CustomCertificateSerialNumberException, IllegalKeyException, CADoesntExistsException, CertificateCreateException,
-            CertificateExtensionException, CryptoTokenOfflineException, SignRequestSignatureException, IllegalNameException,
-            CertificateRevokeException, CertificateSerialNumberException, IllegalValidityException, CAOfflineException, InvalidAlgorithmException {
+            int internalKeyBindingId, int caId, int certificateProfileId, Date expirationTime) throws AuthorizationDeniedException, CustomCertificateSerialNumberException,
+            IllegalKeyException, CADoesntExistsException, CertificateCreateException, CertificateExtensionException, CryptoTokenOfflineException,
+            SignRequestSignatureException, IllegalNameException, CertificateRevokeException, CertificateSerialNumberException,
+            IllegalValidityException, CAOfflineException, InvalidAlgorithmException {
         CertificateCreateSessionRemote certificateCreateSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CertificateCreateSessionRemote.class);
         SignSessionRemote signSession = EjbRemoteHelper.INSTANCE.getRemoteSession(SignSessionRemote.class);
         InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
                 .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
-
+        
         // Get the public key for the key pair currently used in the binding
-        PublicKey publicKey = KeyTools.getPublicKeyFromBytes(
-                internalKeyBindingMgmtSession.getNextPublicKeyForInternalKeyBinding(authenticationToken, internalKeyBindingId));
+        PublicKey publicKey = KeyTools.getPublicKeyFromBytes(internalKeyBindingMgmtSession.getNextPublicKeyForInternalKeyBinding(authenticationToken,
+                internalKeyBindingId));
         // Issue a certificate in EJBCA for the public key
-        final EndEntityInformation user = new EndEntityInformation(username, signerDN, caId, null, null, EndEntityTypes.ENDUSER.toEndEntityType(), 1,
-                certificateProfileId, EndEntityConstants.TOKEN_USERGEN, null);
-        user.setPassword(FOO123_PASSWORD);
+        final EndEntityInformation user = new EndEntityInformation(username, signerDN, caId, null, null,
+                EndEntityTypes.ENDUSER.toEndEntityType(), 1, certificateProfileId,
+                EndEntityConstants.TOKEN_USERGEN, null);
+        user.setPassword("foo123");
         RequestMessage req = new SimpleRequestMessage(publicKey, user.getUsername(), user.getPassword(), expirationTime);
-        return (X509Certificate) (certificateCreateSession
-                .createCertificate(authenticationToken, user, req, X509ResponseMessage.class, signSession.fetchCertGenParams()).getCertificate());
+        return (X509Certificate) (certificateCreateSession.createCertificate(
+                authenticationToken, user, req, X509ResponseMessage.class, signSession.fetchCertGenParams()).getCertificate());
     }
 
     public static X509Certificate createClientSSLCertificate(AuthenticationToken authenticationToken, int internalKeyBindingId, int caId)
             throws AuthorizationDeniedException, CesecoreException, CertificateExtensionException {
         CertificateCreateSessionRemote certificateCreateSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CertificateCreateSessionRemote.class);
-        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
+        InternalKeyBindingMgmtSessionRemote internalKeyBindingMgmtSession = EjbRemoteHelper.INSTANCE.getRemoteSession(InternalKeyBindingMgmtSessionRemote.class);
         // Get the public key for the key pair currently used in the binding
-        PublicKey publicKey = KeyTools.getPublicKeyFromBytes(
-                internalKeyBindingMgmtSession.getNextPublicKeyForInternalKeyBinding(authenticationToken, internalKeyBindingId));
+        PublicKey publicKey = KeyTools.getPublicKeyFromBytes(internalKeyBindingMgmtSession.getNextPublicKeyForInternalKeyBinding(authenticationToken,
+                internalKeyBindingId));
         // Issue a certificate in EJBCA for the public key
         final EndEntityInformation user = new EndEntityInformation(CLIENTSSL_END_USER_NAME, CLIENTSSL_END_USER_DN, caId, null, null,
-                EndEntityTypes.ENDUSER.toEndEntityType(), 1, CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, EndEntityConstants.TOKEN_USERGEN,
-                null);
-        user.setPassword(FOO123_PASSWORD);
+                EndEntityTypes.ENDUSER.toEndEntityType(), 1, CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER,
+                EndEntityConstants.TOKEN_USERGEN, null);
+        user.setPassword("foo123");
         RequestMessage req = new SimpleRequestMessage(publicKey, user.getUsername(), user.getPassword());
-        return (X509Certificate) (certificateCreateSession
-                .createCertificate(authenticationToken, user, req, X509ResponseMessage.class, new CertificateGenerationParams()).getCertificate());
+        return (X509Certificate) (certificateCreateSession.createCertificate(
+                authenticationToken, user, req, X509ResponseMessage.class, new CertificateGenerationParams()).getCertificate());
     }
-
-    public static X509Certificate createUserCertificate(AuthenticationToken authenticationToken, int caId, String userName, String userDn)
-            throws InvalidAlgorithmParameterException, CustomCertificateSerialNumberException, IllegalKeyException, CADoesntExistsException,
-            CertificateCreateException, CryptoTokenOfflineException, SignRequestSignatureException, IllegalNameException, CertificateRevokeException,
-            CertificateSerialNumberException, IllegalValidityException, CAOfflineException, InvalidAlgorithmException, AuthorizationDeniedException,
-            CertificateExtensionException {
+    
+    public static X509Certificate createUserCertificate(AuthenticationToken authenticationToken, int caId,
+                                    String userName, String userDn) throws Exception {
         CertificateCreateSessionRemote certificateCreateSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CertificateCreateSessionRemote.class);
         // Get the public key for the key pair currently used in the binding
         PublicKey publicKey = KeyTools.genKeys("2048", "RSA").getPublic();
         // Issue a certificate in EJBCA for the public key
-        final EndEntityInformation user = new EndEntityInformation(userName, userDn, caId, null, null, EndEntityTypes.ENDUSER.toEndEntityType(), 1,
-                CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, EndEntityConstants.TOKEN_USERGEN, null);
-        user.setPassword(FOO123_PASSWORD);
+        final EndEntityInformation user = new EndEntityInformation(userName, userDn, caId, null, null,
+                EndEntityTypes.ENDUSER.toEndEntityType(), 1, CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER,
+                EndEntityConstants.TOKEN_USERGEN, null);
+        user.setPassword("foo123");
         RequestMessage req = new SimpleRequestMessage(publicKey, user.getUsername(), user.getPassword());
-        return (X509Certificate) (certificateCreateSession
-                .createCertificate(authenticationToken, user, req, X509ResponseMessage.class, new CertificateGenerationParams()).getCertificate());
+        return (X509Certificate) (certificateCreateSession.createCertificate(
+                authenticationToken, user, req, X509ResponseMessage.class, new CertificateGenerationParams()).getCertificate());
     }
-
+    
     public static void revokeUserCertificate(AuthenticationToken authenticationToken, X509Certificate certificate)
-            throws CertificateRevokeException, AuthorizationDeniedException {
-        InternalCertificateStoreSessionRemote internalCertificateStoreSession = EjbRemoteHelper.INSTANCE
-                .getRemoteSession(InternalCertificateStoreSessionRemote.class);
+            throws Exception {
+        InternalCertificateStoreSessionRemote internalCertificateStoreSession = EjbRemoteHelper.INSTANCE.getRemoteSession(
+                InternalCertificateStoreSessionRemote.class);
+        
+        internalCertificateStoreSession.setRevokeStatus(authenticationToken, certificate, 
+                new Date(), RevokedCertInfo.REVOCATION_REASON_SUPERSEDED);
 
-        internalCertificateStoreSession.setRevokeStatus(authenticationToken, certificate, new Date(), RevokedCertInfo.REVOCATION_REASON_SUPERSEDED);
+        return;
     }
 
     public static void removeInternalKeyBinding(AuthenticationToken alwaysAllowtoken, String keyBindingName) throws AuthorizationDeniedException {
@@ -359,25 +333,29 @@ public final class OcspTestUtils {
                     + ". The error was: " + e.getMessage());
         }
     }
-
-    public static CAInfo createExternalCa(AuthenticationToken alwaysAllowtoken, KeyPair caKeyPair, String issuerDn, String caName, long validity)
-            throws OperatorCreationException, CertificateException, CAExistsException, IllegalCryptoTokenException, CertificateImportException,
-            AuthorizationDeniedException {
-        final CAAdminSessionRemote caAdminSessionRemote = EjbRemoteHelper.INSTANCE.getRemoteSession(CAAdminSessionRemote.class);
-        final CaSessionRemote caSessionRemote = EjbRemoteHelper.INSTANCE.getRemoteSession(CaSessionRemote.class);
-        Certificate cert = CertTools.genSelfCert(issuerDn, validity, "1.1.1.1", caKeyPair.getPrivate(), caKeyPair.getPublic(), "SHA256WithRSA", true,
-                "BC");
+    
+    public static CAInfo createExternalCa(AuthenticationToken alwaysAllowtoken, KeyPair caKeyPair,
+                       String issuerDn, String caName, long validity ) throws Exception {
+        final CAAdminSessionRemote caAdminSessionRemote = EjbRemoteHelper.INSTANCE
+                .getRemoteSession(CAAdminSessionRemote.class);
+        final CaSessionRemote caSessionRemote = EjbRemoteHelper.INSTANCE
+                .getRemoteSession(CaSessionRemote.class);
+        Certificate cert = CertTools.genSelfCert(issuerDn, validity, "1.1.1.1", caKeyPair.getPrivate(), 
+                                                        caKeyPair.getPublic(), "SHA256WithRSA", true, "BC");
         List<Certificate> certs = new ArrayList<>();
         certs.add(cert);
-
+        
         caAdminSessionRemote.importCACertificate(alwaysAllowtoken, caName, EJBTools.wrapCertCollection(certs));
         return caSessionRemote.getCAInfo(alwaysAllowtoken, caName);
     }
-
-    public static Certificate createCertByExternalCa(final KeyPair caKeyPair, String userDn, long validity) throws InvalidAlgorithmParameterException, OperatorCreationException, CertificateException {
-
+    
+    public static Certificate createCertByExternalCa(AuthenticationToken alwaysAllowtoken, KeyPair caKeyPair, 
+                                            String userDn, long validity) throws Exception {
+        
         KeyPair userKeyPair = KeyTools.genKeys("2048", "RSA");
-        return CertTools.genSelfCert(userDn, validity, "1.1.1.1", caKeyPair.getPrivate(), userKeyPair.getPublic(), "SHA256WithRSA", false, "BC");
+        Certificate cert = CertTools.genSelfCert(userDn, validity, "1.1.1.1", caKeyPair.getPrivate(), 
+                                                userKeyPair.getPublic(), "SHA256WithRSA", false, "BC");
+        return cert;
     }
-
+    
 }

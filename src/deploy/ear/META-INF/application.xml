@@ -97,7 +97,6 @@
        <!--@unidfnr-ejb.jar@-->
        <!--@ejbca-rest-api.war@-->
        <!--@swagger-ui.war@-->
-       <!--@cits.war@-->
        
 </application>
 
