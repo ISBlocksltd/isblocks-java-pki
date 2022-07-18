@@ -130,6 +130,9 @@ public class ISBCryptoToken extends BaseCryptoToken {
     private String clientID;
     /** The same but for client ID */
     private String clientName;
+
+    private String clientKCName;
+    
     /** The same but for secretKey for OAuth2 authentication */
     private PrivateKey privateKey;
     /** The same but for certificate for OAuth2 authentication */
@@ -179,7 +182,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
     
     public static final String ISB_CLIENTNAME = "ISBClientName";
     
-    
+    public static final String ISB_KCCLIENTNAME = "ISBKCClientName";
     
     public static final String ISB_USER_ID = "ISBUserID";
 
@@ -244,6 +247,12 @@ public class ISBCryptoToken extends BaseCryptoToken {
         return getProperties().getProperty(ISBCryptoToken.ISB_CLIENTNAME);
     }
     
+    
+    /** get the keyVaultType, set during init of crypto token */
+    public String getKCClientName() {
+        return getProperties().getProperty(ISBCryptoToken.ISB_KCCLIENTNAME);
+    }
+
     /** get the keyVaultType, set during init of crypto token */
     public String getUserID() {
         return getProperties().getProperty(ISBCryptoToken.ISB_USER_ID);
@@ -326,7 +335,8 @@ public class ISBCryptoToken extends BaseCryptoToken {
 
         clientUserID = properties.getProperty(ISBCryptoToken.ISB_USER_ID);
 
-       
+        clientKCName = properties.getProperty(ISBCryptoToken.ISB_KCCLIENTNAME);
+ 
         // Install the Azure key vault signature provider for this crypto token
         Provider sigProvider = Security.getProvider(getISBProviderName(id));
         if (sigProvider != null) {
@@ -1050,7 +1060,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
-        parameters.add(new BasicNameValuePair("client_id", "ejbca"));
+        parameters.add(new BasicNameValuePair("client_id", clientKCName));
         if (!isKeyVaultUseKeyBinding()) {
             // app id/secret authentication
             parameters.add(new BasicNameValuePair("password", clientSecret));
@@ -1168,11 +1178,11 @@ public class ISBCryptoToken extends BaseCryptoToken {
        throws CryptoTokenAuthenticationFailedException, ParseException, IOException{
         
         
-        final HttpPost request = new HttpPost(authURL + "/auth/realms/system/protocol/openid-connect/token");
+        final HttpPost request = new HttpPost(authURL);
         final ArrayList<NameValuePair> parameters = new ArrayList<>();
         //parameters.add(new BasicNameValuePair("grant_type", "client_credentials"));
         //parameters.add(new BasicNameValuePair("client_id", clientID));
-        parameters.add(new BasicNameValuePair("client_id", "ejbca"));
+        parameters.add(new BasicNameValuePair("client_id", clientKCName));
         parameters.add(new BasicNameValuePair("password", clientSecret));
         parameters.add(new BasicNameValuePair("username",clientUserID));
         parameters.add(new BasicNameValuePair("grant_type","password"));
