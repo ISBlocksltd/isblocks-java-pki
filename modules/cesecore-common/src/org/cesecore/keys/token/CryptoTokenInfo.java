@@ -131,6 +131,9 @@ public class CryptoTokenInfo implements Named, Serializable {
     public String getISBClientName() {
         return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_CLIENTNAME);        
     }
+    public String getISBKCClientName() {
+        return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_KCCLIENTNAME);        
+    }
     public String getISBUserID() {
         return cryptoTokenProperties.getProperty(ISBCryptoToken.ISB_USER_ID);        
     }
