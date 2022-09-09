@@ -32,7 +32,7 @@ public class EnterpriseEditionEjbBridgeSessionBean implements EnterpriseEditionE
     
     @Override
     public boolean isRunningEnterprise() {
-        return false;
+        return true;
     }
 
     @Override
