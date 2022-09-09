@@ -509,7 +509,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             
             try {
                 isbAuthorizationRequest() ;
-                final HttpPost request = new HttpPost(getClientName()  + "/gpi/v1/keyring/delete/keys/" + clientID + "/" + alias);
+                final HttpPost request = new HttpPost(getClientName()  + "/gpi/v1/keyring/delete/" + clientID + "/" + alias);
                 final CloseableHttpResponse response1 = httpRequestWithAuthHeader(request);
                 final int requestStatusCode = response1.getStatusLine().getStatusCode();
                 //final HttpPost request = new HttpPost(getClientName()  + "/gpi/v1/keyring/delete/keys/" + clientID + "/" + alias);
