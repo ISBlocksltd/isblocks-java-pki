@@ -182,7 +182,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
     
     public static final String ISB_CLIENTNAME = "ISBClientName";
     
-    public static final String ISB_KCCLIENTNAME = "ISBKCClientName";
+        public static final String ISB_KCCLIENTNAME = "ISBKCClientName";
     
     public static final String ISB_USER_ID = "ISBUserID";
 
