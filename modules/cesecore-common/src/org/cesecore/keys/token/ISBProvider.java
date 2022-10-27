@@ -226,12 +226,12 @@ public class ISBProvider extends Provider {
                         default:
                             break;
                         }
-                        final BigInteger n = BigInteger.ONE.shiftLeft(nLen).subtract(BigInteger.ONE); // "order", just to know how long the signature integers should be
+                        /*final BigInteger n = BigInteger.ONE.shiftLeft(nLen).subtract(BigInteger.ONE); // "order", just to know how long the signature integers should be
                         if (log.isDebugEnabled()) {
                             log.debug("(EC) n is: "+BigIntegers.getUnsignedByteLength(n));
                         }
                         final BigInteger[] plain = PlainDSAEncoding.INSTANCE.decode(n, bytes);
-                        bytes = StandardDSAEncoding.INSTANCE.encode(n, plain[0], plain[1]);
+                        bytes = StandardDSAEncoding.INSTANCE.encode(n, plain[0], plain[1]);*/
                     }else if(azureSignAlg.startsWith("ED")) {
                         
                         int nLen = 64; 
