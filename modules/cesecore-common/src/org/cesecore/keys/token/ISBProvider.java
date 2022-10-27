@@ -211,13 +211,13 @@ public class ISBProvider extends Provider {
                     if (log.isDebugEnabled()) {
                         log.debug("Response bytes length: " + valueLength);
                     }
-                    if (azureSignAlg.startsWith("ES")) {
+                    if (azureSignAlg.startsWith("EC")) {
                         int nLen = 256; // for ES256, 32 bytes per signature value integer
                         switch (azureSignAlg) {
-                        case "ES384":
+                        case "EC384":
                             nLen = 384; // 48 bytes per signature value integer
                             break;
-                        case "ES512":
+                        case "EC512":
                             nLen = 528; // 66 bytes per signature value integer, a special case for secp521r1, 
                             // the curve order is just a shade under 2^521−1, hence it requires 521 bits to express one of those integers, 
                             // or 1042 to express two. 131 bytes would suffice; however the convention is to express those two integers 
@@ -308,21 +308,21 @@ public class ISBProvider extends Provider {
         public static final class SHA256WithECDSA extends ISBSignature {
             public SHA256WithECDSA() {
                 hashAlg = "SHA256";
-                azureSignAlg = "ES256";
+                azureSignAlg = "EC256";
             }
         }
 
         public static final class SHA384WithECDSA extends ISBSignature {
             public SHA384WithECDSA() {
                 this.hashAlg = "SHA384";
-                this.azureSignAlg = "ES384";
+                this.azureSignAlg = "EC384";
             }
         }
 
         public static final class SHA512WithECDSA extends ISBSignature {
             public SHA512WithECDSA() {
                 hashAlg = "SHA512";
-                azureSignAlg = "ES512";
+                azureSignAlg = "EC512";
             }
         }
         

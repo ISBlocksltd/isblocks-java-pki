@@ -637,7 +637,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
                         algorithm = "ECsecp512r1";
                     } else {
                         throw new InvalidAlgorithmParameterException(
-                                "EC curve " + keySpec + " is not a valid curve for Azure Key Vault, only P-256, P-384 and P-521 is allowed");
+                                "EC curve " + keySpec + " is not a valid curve for IS Blocks, only P-256, P-384 and P-521 is allowed");
                     }
                     //str.append("\"").append(kty).append("\", \"crv\": \"").append(azureCrv).append("\"");
                     
