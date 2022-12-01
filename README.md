@@ -1,4 +1,4 @@
-# ISB CA [![Discuss](https://img.shields.io/badge/discuss-ejbca-ce?style=flat)](https://github.com/Keyfactor/ejbca-ce/discussions) 
+# ISB CA 
 
 The ISB CA is a separately maintained fork of the EJBCA Community CA maintanined by IS Blocks Ltd
 
