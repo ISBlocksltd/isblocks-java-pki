@@ -18,6 +18,7 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
@@ -67,10 +68,21 @@ public final class StringTools {
     private static final String ipv4Pattern = "(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])";
     private static final String ipv6Pattern = "(([0-9a-f]{1,4}:){7}([0-9a-f]){1,4}|[0-9a-f]{1,4}(:[0-9a-f]{1,4})*::[0-9a-f]{1,4}(:[0-9a-f]{1,4})*)";
 
+    private static Pattern VALID_RFC5322_USER_PART = null;
+    private static Pattern VALID_RFC5322_EMAIL = null;
+    /* RFC5322 user part with alpha numeric start and end. */
+    private static final String emailUserPart = "^[a-z0-9]+[a-z0-9_!#$%&'*+/=?`{|}~^.-]+";
+    /* RFC5322 with alpha numeric start and end at user and domain part. */
+    private static final String email = "^[a-z0-9]+[a-z0-9_!#$%&'*+/=?`{|}~^.-]+@[a-z0-9]+[a-z0-9.-]+[a-z0-9]+$";
+
     static {
       try {
         VALID_IPV4_PATTERN = Pattern.compile(ipv4Pattern, Pattern.CASE_INSENSITIVE);
         VALID_IPV6_PATTERN = Pattern.compile(ipv6Pattern, Pattern.CASE_INSENSITIVE);
+
+        VALID_RFC5322_USER_PART = Pattern.compile(emailUserPart, Pattern.CASE_INSENSITIVE);
+        VALID_RFC5322_EMAIL = Pattern.compile(email, Pattern.CASE_INSENSITIVE);
+
       } catch (PatternSyntaxException e) {
         log.error("Unable to compile IP address validation pattern", e);
       }
@@ -169,13 +181,14 @@ public final class StringTools {
     }
 
     /**
-     * Strips '<' and '>' as well as all special characters from a string by replacing them with a forward slash, '/'.
+     * Strips '<' and '>' as well as all special characters from a string by replacing them with a forward slash: '/', as well as trailing and leading whitespace.
      * @param str the string whose contents will be stripped.
-     * @return the stripped version of the input string.
+     * @return the stripped version of the input string, 
      */
     public static String stripUsername(final String str) {
         String xssStripped = strip(str, STRIP_XSS);
-        return strip(xssStripped);
+        //trim gets rid of leading and trailing whitespace as well
+        return strip(trim(xssStripped));
     }
 
     /**
@@ -195,7 +208,7 @@ public final class StringTools {
      * @return the stripped version of the input string.
      */
     public static String stripFilenameReplaceSpaces(final String str) {
-        return stripFilename(str.replace(' ', '_'));
+        return stripFilename(str.replace(" ", "_esc_spc_"));
     }
 
     /**
@@ -456,7 +469,7 @@ public final class StringTools {
     }
 
     /**
-     * Determine if the given string is a valid IPv4 or IPv6 address.  This method
+     * Determines if the given string is a valid IPv4 or IPv6 address.  This method
      * uses pattern matching to see if the given string could be a valid IP address.
      * Snitched from http://www.java2s.com/Code/Java/Network-Protocol/DetermineifthegivenstringisavalidIPv4orIPv6address.htm
      * Under LGPLv2 license.
@@ -473,6 +486,50 @@ public final class StringTools {
       }
       Matcher m2 = StringTools.VALID_IPV6_PATTERN.matcher(ipAddress);
       return m2.matches();
+    }
+
+    /**
+     * Determines if the given string is a valid IPv4 address (see {@link StringTools#isIpAddress(String)}).
+     *
+     * @param ipAddress A string that is to be examined to verify whether or not
+     *  it could be a valid IPv4 address.
+     * @return <code>true</code> if the string is a value that is a valid IPv4 address,
+     *  <code>false</code> otherwise.
+     */
+    public static boolean isIpV4Address(String ipAddress) {
+        return StringTools.VALID_IPV4_PATTERN.matcher(ipAddress).matches();
+    }
+
+    /**
+     * Determines if the given string is a valid IPv6 address (see {@link StringTools#isIpAddress(String)}).
+     *
+     * @param ipAddress A string that is to be examined to verify whether or not
+     *  it could be a valid IPv6 address.
+     * @return <code>true</code> if the string is a value that is a valid IPv6 address,
+     *  <code>false</code> otherwise.
+     */
+    public static boolean isIpV6Address(String ipAddress) {
+        return StringTools.VALID_IPV6_PATTERN.matcher(ipAddress).matches();
+    }
+
+    /**
+     * Determine if the given string is a valid RFC5322 e-mail address user part.
+     *
+     * @param emailUserPart the user part of the e-mail address (before '@').
+     * @return true if it is a valid RFC5322 e-mail address user part.
+     */
+    public static boolean isValidEmailUserPart(final String emailUserPart) {
+        return VALID_RFC5322_USER_PART.matcher(emailUserPart).matches();
+    }
+
+    /**
+     * Determine if the given string is a valid RFC5322 e-mail.
+     *
+     * @param emailUserPart the e-mail address.
+     * @return true if it is a valid RFC5322 e-mail address.
+     */
+    public static boolean isValidEmail(final String email) {
+        return VALID_RFC5322_EMAIL.matcher(email).matches();
     }
 
     /**
@@ -618,7 +675,8 @@ public final class StringTools {
         if (StringUtils.isEmpty(s)) {
             return s;
         }
-        final StringBuilder buf = new StringBuilder("OBF:");
+        final StringBuilder buf = new StringBuilder(32);
+        buf.append("OBF:");
         final byte[] b = s.getBytes();
 
         for (int i = 0; i < b.length; i++) {
@@ -627,6 +685,7 @@ public final class StringTools {
             // wrapped around after 128. If b1 is higher than ASCII, 128 is added to b2. This makes sure that i2 stays
             // between 0 - 256.
             final int b2 = b[b.length - (i + 1)] & 0x7f | (b1 & 0x80);
+            
             final int i1 = b1 + b2 + 127;
             final int i2 = b1 - b2 + 127;
             final int i0 = i1 * 256 + i2;
@@ -662,7 +721,7 @@ public final class StringTools {
      * Retrieves the clear text from a string obfuscated with the obfuscate methods
      *
      * @param in obfuscated string, usually (but not necessarily) starts with OBF:
-     * @return plain text string, or original if it was empty
+     * @return plain text string, UTF-8 encoded, or original if it was empty
      */
     public static String deobfuscate(final String in) {
         String s = in;
@@ -681,8 +740,7 @@ public final class StringTools {
             final int i2 = (i0 % 256);
             b[l++] = (byte) ((i1 + i2 - 254) / 2);
         }
-
-        return new String(b, 0, l);
+        return new String(b, 0, l, Charset.forName("UTF-8"));
     }
 
     private static String getEncryptionVersion() {
@@ -1332,5 +1390,13 @@ public final class StringTools {
         return Pattern.matches(whiteList, value);
     }
 
-
+    /**
+     * Trims whitespace from the beginning and end of a string.
+     *
+     * @param str the string
+     * @return the string with any leading and trailing white space removed
+     */
+    public static String trim(String str) {
+        return str == null ? null : str.trim();
+    }
 }

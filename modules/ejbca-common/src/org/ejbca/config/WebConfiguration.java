@@ -16,6 +16,7 @@ package org.ejbca.config;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -57,7 +58,13 @@ public class WebConfiguration {
      * @see org.ejbca.util.URIUtil#getIPv6CompatibleHostIp(String)
 	 */
 	public static String getHostName() {
-	    return URIUtil.getIPv6CompatibleHostIp(EjbcaConfigurationHolder.getExpandedString(CONFIG_HTTPSSERVERHOSTNAME));
+	   
+	    if(!Objects.isNull(System.getenv("HOSTNAME"))){
+	        return System.getenv("HOSTNAME");
+	    }else {
+	        return URIUtil.getIPv6CompatibleHostIp(EjbcaConfigurationHolder.getExpandedString(CONFIG_HTTPSSERVERHOSTNAME)); 
+	    }
+	    
 	}
 	
 	/**

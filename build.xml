@@ -11,8 +11,6 @@
     <property name="lib" value="${ejbca.home}/lib" />
     <property name="dist.dir" location="${ejbca.home}/dist" />
 	
-    <property name="hwtoken_classes" value="hwtoken"/>
-    <property name="hwtoken.class.dir" location="${hwtoken_classes}" />
     <property name="apidoc" value="${ejbca.home}/doc/api" />
 
 	<!-- include the standard properties and paths
@@ -458,6 +456,12 @@
             replacement-ejb="cesecore-x509ca.jar"
         />
 		<jar-replacement-in-module
+				replacement-tag="!--@proxy-ca.jar@-->"
+				replacement-file="${eardd.src}/META-INF/application.xml"
+				replacement-enabled="${mod.proxy-ca.exists}"
+				replacement-ejb="proxy-ca.jar"
+		/>
+		<jar-replacement-in-module
 			replacement-tag="!--@unidfnr-ejb.jar@-->"
 			replacement-file="${eardd.src}/META-INF/application.xml"
 			replacement-enabled="${mod.unidfnr.enabled}"
@@ -539,8 +543,6 @@
 		<antcall target="va_replacings_in_application.xml" inheritall="true" inheritrefs="true">
 			<param name="application.xml" value="${eardd.src}/META-INF/application.xml"/>
 		</antcall>
-		<!-- This dir has to exist here -->
-		<mkdir dir="${hwtoken.class.dir}"/>
 		<!-- Include Hibernate JPA libraries if they don't exist in the current application server. -->
 		<condition property="bundle-hibernate-exclude" value="" else="**">
 			<isset property="bundle-hibernate-jpa"/>
@@ -682,20 +684,16 @@
                 <include name="peerconnector-interface.jar" />
                 <include name="peerconnector-common.jar" />
         		<include name="peerconnector-entity.jar" />
+        		<include name="plugins.jar" />
         		<include name="plugins-ee.jar" />
         		<include name="caa.jar" />
 	            <include name="unidfnr-ejb.jar" />
 	            <include name="ejbca-ejb.jar" />
 				<include name="acme-common.jar" />
-        		<include name="ejbca-rest-common.jar" />
-        		<include name="ejbca-rest-certificate.jar" />
-        		<include name="ejbca-rest-configdump.jar" />
-        		<include name="ejbca-rest-ca.jar" />
-        		<include name="ejbca-rest-cryptotoken.jar" />
-        		<include name="ejbca-rest-camanagement.jar" />
-        		<include name="ejbca-rest-endentity.jar" />
         		<include name="ejbca-ssh.jar" />
         		<include name="ejbca-cits.jar" />
+        		<include name="proxy-ca.jar" />
+        		<include name="p11ng.jar" />
         	</zipfileset>
             <!-- Include XStream for the use from statedump-ejb.jar -->
             <zipfileset prefix="lib" dir="${lib}/xstream" erroronmissingdir="false">
@@ -713,7 +711,6 @@
         	<zipfileset prefix="lib" dir="${lib}/hibernate" excludes="${bundle-hibernate-exclude}"/>
         	<zipfileset prefix="lib" dir="${dist.dir}" includes="ejbca-common.jar"/>
         	<!-- Include PrimeCard HSM libraries. TODO: Test that this works. Previously the classes were included in ejbca-ejb.jar.. -->
-        	<zipfileset prefix="lib" dir="${hwtoken.class.dir}" includes="*.jar"/>
 		</ear>
     	<antcall target="signjar" inheritall="true" inheritrefs="true">
         	<param name="signjar.file" value="${caear}"/>
@@ -770,7 +767,6 @@
             <sourcepath location="${ejbca.home}/modules/cesecore-ejb-interface/src"/>
             <sourcepath location="${ejbca.home}/modules/cesecore-entity/src"/>
         	<sourcepath location="${ejbca.home}/modules/cesecore-x509ca/src"/>
-        	<sourcepath location="${ejbca.home}/modules/cli-util/src"/>
            	<sourcepath location="${ejbca.home}/modules/clientToolBox/src"/>
         	<sourcepath location="${ejbca.home}/modules/edition-specific/src-ejb/"/>
         	<sourcepath location="${ejbca.home}/modules/edition-specific/src-interface/"/>
@@ -792,6 +788,7 @@
             <sourcepath location="${ejbca.home}/modules/peerconnector/src-interface"/>
             <sourcepath location="${ejbca.home}/modules/peerconnector/src-publ"/>
         	<sourcepath location="${ejbca.home}/modules/peerconnector/src-rar"/>
+        	<sourcepath location="${ejbca.home}/modules/p11ng/src"/>
 		<sourcepath location="${ejbca.home}/modules/peerconnector/src-war"/>
 		<sourcepath location="${ejbca.home}/modules/peerconnector/src-ra"/>
         	<sourcepath location="${ejbca.home}/modules/va/src-war"/>
@@ -967,7 +964,11 @@
         <condition property="build.contains.ssh" value="true">
         	<equals arg1="${variant}" arg2="ssh" casesensitive="false"/>
         </condition>
-		
+
+        <condition property="build.contains.proxy-ca" value="true">
+            <equals arg1="${variant}" arg2="proxy-ca" casesensitive="false"/>
+        </condition>
+
         <condition property="build.contains.cesecore-x509ca" value="true">
         	<istrue value="${running.full.ejbca}" />
         </condition>
@@ -994,7 +995,11 @@
 		<condition property="variant.suffix" value="_SSH">
 			<equals arg1="${variant}" arg2="ssh" casesensitive="false"/>
 		</condition>
-		
+
+		<condition property="variant.suffix" value="_ProxyCA">
+			<equals arg1="${variant}" arg2="proxy-ca" casesensitive="false"/>
+		</condition>
+
 		<condition property="variant.suffix" value="">
 			<istrue value="${running.full.ejbca}" />
         </condition>
@@ -1027,7 +1032,6 @@
 		    	<exclude name="dist/**" />
 		    	<exclude name="out/**" />
 		    	<exclude name="p12*/**" />
-		    	<exclude name="hwtoken/**" />
 		    	<exclude name="**/*.class" />
 		    	<exclude name=".classpath" />
 		    	<exclude name=".project" />
@@ -1115,22 +1119,24 @@
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-configdump/**"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-cryptotoken/**"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-endentity/**"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-rest-ssh/**"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CaRestResourceSwagger.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CaManagementRestResourceSwagger.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/ConfigdumpRestResourceSwagger.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/CryptoTokenRestResourceSwagger.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/EndEntityRestResourceSwagger.java"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/EndEntityRestResourceV2Swagger.java"/>
+		    	<exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/SshRestResourceSwagger.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaRestResourceUnitTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaRestResourceSystemTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CaManagementRestResourceSystemTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/CryptoTokenRestResourceSystemTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/EndEntityRestResourceSystemTest.java"/>
+                <exclude unless="edition.is.ee" name="modules/ejbca-rest-api/src-test/org/ejbca/ui/web/rest/api/resource/EndEntityRestResourceSearchPaginationSystemTest.java"/>
                 <exclude unless="edition.is.ee" name="modules/plugins-ee/**"/>
-		    	<exclude unless="edition.is.ee" name="modules/ssh/**"/>
-		    	<exclude unless="edition.is.ee" name="modules/cesecore-common/src/org/cesecore/keys/token/p11ng/**"/>
+		    	<exclude unless="edition.is.ee" name="modules/p11ng/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/p11ng-cli/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/ejbca-ejb-cli/src/org/ejbca/ui/cli/cryptotoken/CryptoTokenChangeAuthDataCommand.java"/>
-                <exclude unless="edition.is.ee" name="modules/cesecore-common/src-test/org/cesecore/keys/token/p11ng/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/msae/**"/>
 		    	<exclude unless="edition.is.ee" name="modules/cits/**"/>
                 <!-- List of modules to exclude from non-eIDAS editions -->
@@ -1154,6 +1160,12 @@
 		    	
 		    	<!-- Only include SSH module if specified -->
 		    	<exclude unless="build.contains.ssh" name="modules/ssh/**"/>
+		    	<exclude unless="build.contains.ssh" name="modules/ejbca-rest-ssh/**"/>
+		    	<exclude unless="build.contains.ssh" name="modules/ejbca-rest-api/src/org/ejbca/ui/web/rest/api/resource/swagger/SshRestResourceSwagger.java"/>
+		    	<exclude unless="build.contains.ssh" name="modules/ssh/src-test/org/ejbca/ui/web/rest/api/resource/SshRestResourceSystemTest.java"/>
+
+                <!-- Only include ProxyCA module if specified -->
+                <exclude unless="build.contains.proxy-ca" name="modules/proxy-ca/**"/>
 		    	
 				<!-- List of subcommands for ejbca.sh script that must be hidden when we are running on limited ejbca (va/ra) installation. -->
 		    	<!-- The excluded parts are listed in the ticket ECA-7904 and could be updated accordingly if needed.   -->
@@ -1526,6 +1538,11 @@ SHA-256 checksum: ${cesecorebinSHA256}
     <target name="ejbca-ejb-cli" depends="deprecated:check" description="Builds EJBCA command line interface">
     	<ant dir="modules" target="ejbca-ejb-cli" />
     </target>
+	
+	<target name="p11ng">
+       	<ant dir="modules" target="p11ng" />
+    </target>
+
 	
     <target name="peerconnector-cli:fail" unless="mod.peerconnector.exists">
         <fail>EJBCA DB CLI does not exist in EJBCA Community. Please contact a sales representative at PrimeKey Solutions for information about how to get an Enterprise License.</fail>

@@ -12,7 +12,7 @@
  *************************************************************************/
 package org.ejbca.core.ejb.ra;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -468,7 +468,7 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
                         endEntityProfileId, endEntity.getCertificateProfileId(), endEntity.getTokenType(), extendedInformation);
                 // Since persist will not commit and fail if the user already exists, we need to check for this
                 // Flushing the entityManager will not allow us to rollback the persisted user if this is a part of a larger transaction.
-                if (endEntityAccessSession.findByUsername(userData.getUsername()) != null) {
+                if (existsUser(userData.getUsername())){
                     throw new EndEntityExistsException("User " + userData.getUsername() + " already exists.");
                 }
                 entityManager.persist(userData);
@@ -817,7 +817,7 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
         final EndEntityInformation originalCopy = userData.toEndEntityInformation();
         
         // Merge all DN and SAN values from previously saved end entity
-        if( profile.getAllowMergeDn()) {
+        if (profile.getAllowMergeDn()) {
             try {
                 // SubjectDN is not mandatory so
                 if (dn == null) {
@@ -829,7 +829,8 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
                 }
                               
                 dn = new DistinguishedName(userData.getSubjectDnNeverNull()).mergeDN(new DistinguishedName(dn), true, sdnMap).toString();
-                dn = EndEntityInformationFiller.mergeDnString(dn, profile, EndEntityInformationFiller.SUBJECT_DN, null);
+                dn = EndEntityInformationFiller.getDnEntriesUniqueOnly(dn, EndEntityInformationFiller.SUBJECT_DN);
+
             } catch (InvalidNameException e) {
                 if (log.isDebugEnabled()) {
                     log.debug("Invalid Subject DN when merging '"+dn+"' with '"+userData.getSubjectDnNeverNull()+"'. Setting it to empty. Exception was: " + e.getMessage());
@@ -846,14 +847,14 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
                     sanMap.put(DnComponents.RFC822NAME, endEntityInformation.getEmail());
                 }
                 altName = new DistinguishedName(userData.getSubjectAltNameNeverNull()).mergeDN(new DistinguishedName(altName), true, sanMap).toString();
-                altName = EndEntityInformationFiller.mergeDnString(altName, profile, EndEntityInformationFiller.SUBJECT_ALTERNATIVE_NAME, null);                
+                altName = EndEntityInformationFiller.getDnEntriesUniqueOnly(altName, EndEntityInformationFiller.SUBJECT_ALTERNATIVE_NAME);
             } catch (InvalidNameException e) {
                 if (log.isDebugEnabled()) {
                     log.debug("Invalid Subject AN when merging '"+altName+"' with '"+userData.getSubjectAltNameNeverNull()+"'. Setting it to empty. Exception was: " + e.getMessage());
                 }
                 altName = "";
             }
-            
+
         }
         
         altName = getAddDnsFromCnToAltName(dn, altName, profile);
@@ -1107,23 +1108,27 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
         if (altName == null) {
             altName = "";
         }
-        if (StringUtils.isNotEmpty(altName) && StringUtils.isNotEmpty(dnsNameValueFromCn)) {
-            altName += ", ";
-        }
+        if (StringUtils.isNotEmpty(dnsNameValueFromCn) && !altName.contains(dnsNameValueFromCn)) {
+       
+            if (StringUtils.isNotEmpty(altName)) {
+                altName += ", ";
+            }
         altName += dnsNameValueFromCn;
+        }
+        
         return altName;
     }
 
     @Override
-    public void deleteUser(
-            final AuthenticationToken authenticationToken, final String username
-    ) throws AuthorizationDeniedException, NoSuchEndEntityException, CouldNotRemoveEndEntityException {
+    public void deleteUser(final AuthenticationToken authenticationToken, final String username)
+            throws AuthorizationDeniedException, NoSuchEndEntityException, CouldNotRemoveEndEntityException {  
+        final String trimmedUsername = StringTools.trim(username);
         if (log.isTraceEnabled()) {
-            log.trace(">deleteUser(" + username + ")");
+            log.trace(">deleteUser(" + trimmedUsername + ")");
         }
         // Check if administrator is authorized to delete user.
         Integer caId;
-        final UserData data1 = endEntityAccessSession.findByUsername(username);
+        final UserData data1 = endEntityAccessSession.findByUsername(trimmedUsername);
         if (data1 != null) {
             caId = data1.getCaId();
             endEntityAuthenticationSession.assertAuthorizedToCA(authenticationToken, caId);
@@ -1131,7 +1136,7 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
                 endEntityAuthenticationSession.assertAuthorizedToEndEntityProfile(authenticationToken, data1.getEndEntityProfileId(), AccessRulesConstants.DELETE_END_ENTITY, caId);
             }
         } else {
-            log.info(intres.getLocalizedMessage("ra.errorentitynotexist", username));
+            log.info(intres.getLocalizedMessage("ra.errorentitynotexist", trimmedUsername));
             // This exception message is used to not leak information to the user
             final String msg = intres.getLocalizedMessage("ra.wrongusernameorpassword");
             log.info(msg);
@@ -1141,20 +1146,20 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
             entityManager.remove(data1);
             logAuditEvent(
                     EjbcaEventTypes.RA_DELETEENDENTITY, EventStatus.SUCCESS,
-                    authenticationToken, caId, null, username,
-                    SecurityEventProperties.builder().withMsg(intres.getLocalizedMessage("ra.removedentity", username)).build()
+                    authenticationToken, caId, null, trimmedUsername,
+                    SecurityEventProperties.builder().withMsg(intres.getLocalizedMessage("ra.removedentity", trimmedUsername)).build()
             );
         } catch (Exception e) {
-            final String msg = intres.getLocalizedMessage("ra.errorremoveentity", username);
+            final String msg = intres.getLocalizedMessage("ra.errorremoveentity", trimmedUsername);
             logAuditEvent(
                     EjbcaEventTypes.RA_DELETEENDENTITY, EventStatus.FAILURE,
-                    authenticationToken, caId, null, username,
+                    authenticationToken, caId, null, trimmedUsername,
                     SecurityEventProperties.builder().withMsg(msg).withError(e.getMessage()).build()
             );
             throw new CouldNotRemoveEndEntityException(msg);
         }
         if (log.isTraceEnabled()) {
-            log.trace("<deleteUser(" + username + ")");
+            log.trace("<deleteUser(" + trimmedUsername + ")");
         }
     }
 
@@ -2173,7 +2178,7 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
     @Override
     public boolean existsUser(String username) {
         // Selecting 1 column is optimal speed
-        final javax.persistence.Query query = entityManager.createQuery("SELECT 1 FROM UserData a WHERE a.username=:username");
+        final javax.persistence.Query query = entityManager.createQuery("SELECT 1 FROM UserData a WHERE TRIM(a.username) = TRIM(:username)");
         query.setParameter("username", username);
         return !query.getResultList().isEmpty();
     }
@@ -2256,7 +2261,7 @@ public class EndEntityManagementSessionBean implements EndEntityManagementSessio
         final EndEntityProfile prof = endEntityProfileSession.getEndEntityProfileNoClone(endEntityProfileId);
         String value = null;
         if (prof != null) {
-            if (prof.getUse(EndEntityProfile.ALLOWEDREQUESTS, 0)) {
+            if (prof.isAllowedRequestsUsed()) {
                 value = prof.getValue(EndEntityProfile.ALLOWEDREQUESTS, 0);
             }
         } else {

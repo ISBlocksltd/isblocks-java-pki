@@ -43,6 +43,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.bind.DatatypeConverter;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.cesecore.CesecoreException;
 import org.cesecore.authentication.tokens.AuthenticationToken;
@@ -143,6 +144,7 @@ public class CertificateRestResource extends BaseRestResource {
             );
             return Response.status(Status.CREATED).entity(enrollCertificateRestResponse).build();
         } catch (EjbcaException | CertificateException | EndEntityProfileValidationException | CesecoreException e) {
+            log.info("exception during enrollPkcs10Certificate: ", e);
             throw new RestException(Status.BAD_REQUEST.getStatusCode(), e.getMessage());
         }
     }
@@ -327,6 +329,8 @@ public class CertificateRestResource extends BaseRestResource {
         final RaApprovalRequestInfo approvalRequestInfo = raMasterApi.getApprovalRequest(admin, requestId);
         final String password = request.getPassword();
         final String responseFormat = request.getResponseFormat();
+        final String keyAlg = request.getKeyAlg();
+        final String keySpec = request.getKeySpec();
         if (approvalRequestInfo == null) {
             throw new RestException(Status.BAD_REQUEST.getStatusCode(), "Could not find request with Id '" + requestId + "'");
         }
@@ -399,7 +403,10 @@ public class CertificateRestResource extends BaseRestResource {
             } else {
                 throw new RestException(Status.BAD_REQUEST.getStatusCode(), "Invalid response format. Must be 'JKS', 'P12', 'BCFKS', or 'PEM'");
             }
-
+            if (StringUtils.isNotEmpty(keyAlg) && StringUtils.isNoneEmpty(keySpec)) {
+                endEntityInformation.getExtendedInformation().setKeyStoreAlgorithmType(keyAlg);
+                endEntityInformation.getExtendedInformation().setKeyStoreAlgorithmSubType(keySpec);
+            }
             keyStoreBytes = raMasterApi.generateKeyStore(admin, endEntityInformation);
             if (responseFormat.equals(TokenDownloadType.PEM.name())) {
                 Certificate certificate = CertTools.getCertfromByteArray(keyStoreBytes, Certificate.class);

@@ -106,6 +106,7 @@ import org.cesecore.util.EjbRemoteHelper;
 import org.cesecore.util.SimpleTime;
 import org.cesecore.util.StringTools;
 import org.ejbca.core.ejb.ca.caadmin.CAAdminSessionRemote;
+import org.ejbca.core.ejb.crl.CrlDataTestSessionRemote;
 import org.ejbca.core.model.ca.caadmin.extendedcaservices.KeyRecoveryCAServiceInfo;
 import org.ejbca.cvc.AccessRightsIS;
 import org.ejbca.cvc.AuthorizationRoleEnum;
@@ -269,6 +270,16 @@ public abstract class CaTestUtils {
         }
     }
 
+    /**
+     * Removes certificate revocation lists by issuer's distinguished name
+     * @param issuerDn Issuer DN
+     */
+    public static void removeCrlByIssuerDn(final String issuerDn) {
+        final CrlDataTestSessionRemote crlDataTestSession = EjbRemoteHelper.INSTANCE
+                .getRemoteSession(CrlDataTestSessionRemote.class, EjbRemoteHelper.MODULE_TEST);
+        crlDataTestSession.deleteCrlDataByIssuerDn(issuerDn);
+    }
+
     /** Creates a CA object, but does not actually add the CA to EJBCA. */
     public static X509CA createTestX509CAOptionalGenKeys(String cadn, char[] tokenpin, boolean genKeys, boolean pkcs11)
             throws CertificateParsingException, CryptoTokenOfflineException, OperatorCreationException {
@@ -293,7 +304,8 @@ public abstract class CaTestUtils {
         extendedCaServices.add(new KeyRecoveryCAServiceInfo(ExtendedCAServiceInfo.STATUS_ACTIVE));
         String caname = CertTools.getPartFromDN(cadn, "CN");
         boolean ldapOrder = !CertTools.isDNReversed(cadn);
-        X509CAInfo cainfo = X509CAInfo.getDefaultX509CAInfo(cadn, caname, CAConstants.CA_ACTIVE, CertificateProfileConstants.CERTPROFILE_FIXED_ROOTCA, "3650d",
+        int certificateProfile = (signedBy == CAInfo.SELFSIGNED ? CertificateProfileConstants.CERTPROFILE_FIXED_ROOTCA : CertificateProfileConstants.CERTPROFILE_FIXED_SUBCA);
+        X509CAInfo cainfo = X509CAInfo.getDefaultX509CAInfo(cadn, caname, CAConstants.CA_ACTIVE, certificateProfile, "3650d",
                 signedBy, null, catoken);
         cainfo.setDescription("JUnit RSA CA");
         cainfo.setExtendedCAServiceInfos(extendedCaServices);
@@ -406,6 +418,20 @@ public abstract class CaTestUtils {
         
         return ecaCertificate.getEncoded();
     }
+    
+    public static ECA createTestECAOptionalGenKeysPkcs11(AuthenticationToken admin, String cadn, int caCertProfileId,
+            String caCertificateId, final String signKeySpec, final String encKeySpec) throws Exception {
+        
+        char[] tokenpin = SystemTestsConfiguration.getPkcs11SlotPin(null);
+        if(tokenpin==null) {
+            throw new IllegalStateException("PKCS11(Ng) systemtest settings are not properly configured.");
+        }
+        // Create catoken
+        CryptoTokenManagementSessionRemote cryptoTokenManagementSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CryptoTokenManagementSessionRemote.class);
+        int cryptoTokenId = CryptoTokenTestUtils.createCryptoTokenForCA(null, tokenpin, true, false, cadn, signKeySpec, encKeySpec,  true);
+
+        return createTestECAOptionalGenKeysInternal(admin, cadn, caCertProfileId, caCertificateId, tokenpin, cryptoTokenId);
+    }
 
     /** Creates a ECA object and persists it in the database
      * @throws Exception
@@ -413,12 +439,18 @@ public abstract class CaTestUtils {
     public static ECA createTestECAOptionalGenKeys(AuthenticationToken admin, String cadn, int caCertProfileId,
              String caCertificateId, char[] tokenpin, final String keyspec) throws Exception {
         // Create catoken
-        CaSessionRemote caSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CaSessionRemote.class);
-        CAAdminSessionRemote caAdminSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CAAdminSessionRemote.class, EjbRemoteHelper.MODULE_TEST);
         CryptoTokenManagementSessionRemote cryptoTokenManagementSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CryptoTokenManagementSessionRemote.class);
         int cryptoTokenId = CryptoTokenTestUtils.createCryptoTokenForCA(null, tokenpin, false, false, cadn, keyspec);
         cryptoTokenManagementSession.createKeyPair(admin, cryptoTokenId, CAToken.SOFTPRIVATESIGNKEYALIAS, KeyGenParams.builder(keyspec).build());
         
+        return createTestECAOptionalGenKeysInternal(admin, cadn, caCertProfileId, caCertificateId, tokenpin, cryptoTokenId);
+    }
+    
+    private static ECA createTestECAOptionalGenKeysInternal(AuthenticationToken admin, String cadn, int caCertProfileId,
+            String caCertificateId, char[] tokenpin, final int cryptoTokenId) throws Exception {
+        CaSessionRemote caSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CaSessionRemote.class);
+        CAAdminSessionRemote caAdminSession = EjbRemoteHelper.INSTANCE.getRemoteSession(CAAdminSessionRemote.class, EjbRemoteHelper.MODULE_TEST);
+
         // Create CAToken (what key in the CryptoToken should be used for what)
         final Properties caTokenProperties = new Properties();
         caTokenProperties.setProperty(CATokenConstants.CAKEYPURPOSE_CERTSIGN_STRING, CAToken.SOFTPRIVATESIGNKEYALIAS);

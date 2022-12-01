@@ -12,14 +12,6 @@
  *************************************************************************/
 package org.cesecore.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.security.InvalidKeyException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
@@ -31,8 +23,17 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.log4j.Logger;
+import org.cesecore.config.CesecoreConfiguration;
 import org.cesecore.config.ConfigurationHolder;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Tests the StringTools class.
@@ -58,8 +59,8 @@ public class StringToolsTest {
         final String str = "file name";
         final String str1 = "file  name ";
         final String str2 = "fileName";
-        assertEquals("file_name", StringTools.stripFilenameReplaceSpaces(str));
-        assertEquals("file__name_", StringTools.stripFilenameReplaceSpaces(str1));
+        assertEquals("file_esc_spc_name", StringTools.stripFilenameReplaceSpaces(str));
+        assertEquals("file_esc_spc__esc_spc_name_esc_spc_", StringTools.stripFilenameReplaceSpaces(str1));
         assertEquals("fileName", StringTools.stripFilenameReplaceSpaces(str2));        
         log.trace("<testIpOctetsToString");
     }
@@ -181,6 +182,7 @@ public class StringToolsTest {
         log.trace(">test05Strip()");
         final Object originalValue = ConfigurationHolder.instance().getProperty(FORBIDDEN_CHARS_KEY);
         try {
+            assertEquals("\n\r;!\u0000%`?$~", new String(CesecoreConfiguration.getForbiddenCharacters()));
             final String input =  "|\n|\r|;|foo bar|!|\u0000|`|?|$|~|\\<|\\>|\\\"|\\\\";
             final String defaultOutput = "|/|/|/|foo bar|/|/|/|/|/|/|\\<|\\>|\\\"|\\\\";
             forbiddenTest(null, input, defaultOutput);
@@ -212,14 +214,19 @@ public class StringToolsTest {
     @Test
     public void testObfuscate() throws Exception {
         String obf = StringTools.obfuscate("foo123");
-        String deobf = StringTools.deobfuscate(obf);
         assertEquals("OBF:1jg21l181ku51kqp1kxu1jd8", obf);
+        String deobf = StringTools.deobfuscate(obf);
         assertEquals("foo123", deobf);
         String obfif = StringTools.obfuscate("foo123qw");
-        String deobfif = StringTools.deobfuscate(obfif);
         assertEquals("OBF:1wtq1xfh1l8b18qm18qo1l4z1xfl1wuo", obfif);
+        String deobfif = StringTools.deobfuscate(obfif);
         assertEquals("foo123qw", deobfif);
         assertEquals("foo123qwe", StringTools.deobfuscateIf("foo123qwe"));
+        // Non-ASCII should be handled
+        String obf2 = StringTools.obfuscate("euro\u20ac.");
+        assertEquals("OBF:1i9i1l1k1c6n1uh8390y2qkv2zhy1i6g", obf2);
+        String deobf2 = StringTools.deobfuscate(obf2);
+        assertEquals("euro\u20ac.", deobf2);
         // Empty String should be handled
         assertEquals("", StringTools.obfuscate(""));
         assertEquals("", StringTools.deobfuscateIf("OBF:"));
@@ -227,19 +234,15 @@ public class StringToolsTest {
         assertNull(StringTools.deobfuscate(null));
         assertNull(StringTools.deobfuscateIf(null));
         assertNull(StringTools.obfuscate(null));
-        // Non-ASCII should be handled
-        String obf2 = StringTools.obfuscate("euro€.");
-        String deobf2 = StringTools.deobfuscate(obf2);
-        assertEquals("euro€.", deobf2);
     }
 
     @Test
     public void testObfuscateEmoji() throws Exception {
-        String obf = StringTools.obfuscate("euro€emoji🧑🏿.");
+        String obf = StringTools.obfuscate("euro\u20acemoji\uD83E\uDDD1\uD83C\uDFFF.");
         String deobf = StringTools.deobfuscate(obf);
         assertEquals("euro\u20ACemoji\uD83E\uDDD1\uD83C\uDFFF.", deobf);
     }
-
+    
     @Test
     public void testObfuscateNoRepeat() throws Exception {
         String obf = StringTools.obfuscate("aabc");
@@ -247,20 +250,19 @@ public class StringToolsTest {
         assertEquals("aabc", deobf);
         assertNotEquals(obf.substring(0, 4), obf.substring(4, 8));
 
-        obf = StringTools.obfuscate("€€€€aabc");
+        obf = StringTools.obfuscate("\u20ac\u20ac\u20ac\u20acaabc");
         deobf = StringTools.deobfuscate(obf);
-        assertEquals("€€€€aabc", deobf);
+        assertEquals("\u20ac\u20ac\u20ac\u20acaabc", deobf);
         obf = obf.substring(4);
         assertNotEquals(obf.substring(0, 12), obf.substring(12, 24));
         assertEquals(obf.substring(24, 36), obf.substring(36, 48));
     }
-
+    
     @Test
     public void testObfuscateFuzz() throws Exception {
         Random random = new Random(1);
         StringBuilder builder = new StringBuilder();
-
-        for (int i = 0; i < 999999; i++) {
+        for (int i = 0; i < 99999; i++) {
             builder.setLength(0);
             int length = 40 + random.nextInt(50);
             for (int j = 0; j < length; j++) {
@@ -269,13 +271,11 @@ public class StringToolsTest {
                     continue;
                 }
                 builder.appendCodePoint(codePoint);
-
                 codePoint = random.nextInt(500);
                 if (codePoint < 128) {
                     builder.appendCodePoint(codePoint);
                 }
             }
-
             String input = builder.toString();
             String obf = StringTools.obfuscate(input);
             String deobf = StringTools.deobfuscate(obf);
@@ -289,7 +289,7 @@ public class StringToolsTest {
         String deobf = StringTools.deobfuscate(obf);
         assertEquals("a\0\0\0\0\0\0\0c", deobf);
     }
-
+    
     @Test
     public void testPbe() throws Exception {
         CryptoProviderTools.installBCProvider();
@@ -726,5 +726,14 @@ public class StringToolsTest {
         assertEquals("CN=foo,O=bar, DC=test, DC=com", StringTools.capitalizeCountryCodeInSubjectDN("CN=foo,O=bar, DC=test, DC=com"));
         // Not handled case, should also be very rare (==never seen) using both DC=com and C
         assertEquals("CN=foo,O=bar, DC=test, DC=com,C=se", StringTools.capitalizeCountryCodeInSubjectDN("CN=foo,O=bar, DC=test, DC=com,C=se"));
+    }
+
+    @Test
+    public void testTrim() {
+        assertNull(StringTools.trim(null));
+        assertEquals("noSpaces", StringTools.trim("noSpaces"));
+        assertEquals("string with spaces", StringTools.trim("string with spaces"));
+        assertEquals("trailingWhitespace", StringTools.trim("trailingWhitespace "));
+        assertEquals("leadingWhitespace", StringTools.trim("   leadingWhitespace"));
     }
 }

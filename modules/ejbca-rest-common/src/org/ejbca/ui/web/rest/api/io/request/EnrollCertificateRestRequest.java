@@ -12,6 +12,7 @@
  *************************************************************************/
 package org.ejbca.ui.web.rest.api.io.request;
 
+import io.swagger.annotations.ApiModelProperty;
 import org.ejbca.core.protocol.rest.EnrollPkcs10CertificateRequest;
 
 /**
@@ -19,14 +20,23 @@ import org.ejbca.core.protocol.rest.EnrollPkcs10CertificateRequest;
  *
  */
 public class EnrollCertificateRestRequest {
+    @ApiModelProperty(value = "Certificate request", example = "-----BEGIN CERTIFICATE REQUEST-----\nMIICh...V8shQ==\n-----END CERTIFICATE REQUEST-----")
     private String certificateRequest;
+    @ApiModelProperty(value = "Certificate profile name", example = "ENDUSER")
     private String certificateProfileName;
+    @ApiModelProperty(value = "End Entity profile name", example = "ExampleEEP")
     private String endEntityProfileName;
+    @ApiModelProperty(value = "Certificate Authority (CA) name", example = "CN=ExampleCA")
     private String certificateAuthorityName;
+    @ApiModelProperty(value = "Username", example = "JohnDoe")
     private String username;
+    @ApiModelProperty(value = "Password", example = "foo123")
     private String password;
+    @ApiModelProperty(value = "Account Binding ID", example = "1234567890")
     private String accountBindingId;
     private boolean includeChain;
+    @ApiModelProperty(value = "Email", example = "john.doe@example.com")
+    private String email;
     
     public EnrollCertificateRestRequest() {
     }
@@ -92,6 +102,14 @@ public class EnrollCertificateRestRequest {
     public void setIncludeChain(final boolean includeChain) {
         this.includeChain = includeChain;
     }
+    
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     /**
      * Returns a converter instance for this class.
@@ -124,6 +142,7 @@ public class EnrollCertificateRestRequest {
                     .password(enrollCertificateRestRequest.getPassword())
                     .accountBindingId(enrollCertificateRestRequest.getAccountBindingId())
                     .includeChain(enrollCertificateRestRequest.getIncludeChain())
+                    .email(enrollCertificateRestRequest.getEmail())
                     .build();
         }
     }

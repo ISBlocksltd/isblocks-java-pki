@@ -39,8 +39,13 @@ import java.util.List;
  */
 public class SearchEndEntitiesRestRequest {
 
+    @ApiModelProperty(value = "Maximum number of results", example = "10")
     @ValidSearchEndEntityMaxNumberOfResults
     private Integer maxNumberOfResults;
+
+    @ApiModelProperty(value = "Current page number", example = "0")
+    private int currentPage;
+    
     @ApiModelProperty(value = "A List of search criteria." )
     @ValidSearchEndEntityCriteriaRestRequestList
     @Valid
@@ -52,6 +57,14 @@ public class SearchEndEntitiesRestRequest {
 
     public void setMaxNumberOfResults(Integer maxNumberOfResults) {
         this.maxNumberOfResults = maxNumberOfResults;
+    }
+    
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public void setCurrentPage(int currentPage) {
+        this.currentPage = currentPage;
     }
 
     public List<SearchEndEntityCriteriaRestRequest> getCriteria() {
@@ -74,12 +87,18 @@ public class SearchEndEntitiesRestRequest {
     public static class SearchEndEntitiesRestRequestBuilder {
         private Integer maxNumberOfResults;
         private List<SearchEndEntityCriteriaRestRequest> criteria;
+        private int currentPage;
 
         private SearchEndEntitiesRestRequestBuilder() {
         }
 
         public SearchEndEntitiesRestRequestBuilder maxNumberOfResults(final Integer maxNumberOfResults) {
             this.maxNumberOfResults = maxNumberOfResults;
+            return this;
+        }
+        
+        public SearchEndEntitiesRestRequestBuilder currentPage(final Integer currentPage) {
+            this.currentPage = currentPage;
             return this;
         }
 
@@ -92,6 +111,7 @@ public class SearchEndEntitiesRestRequest {
             final SearchEndEntitiesRestRequest searchEndEntitiesRestRequest = new SearchEndEntitiesRestRequest();
             searchEndEntitiesRestRequest.setMaxNumberOfResults(maxNumberOfResults);
             searchEndEntitiesRestRequest.setCriteria(criteria);
+            searchEndEntitiesRestRequest.setCurrentPage(currentPage);
             return searchEndEntitiesRestRequest;
         }
     }
@@ -112,6 +132,7 @@ public class SearchEndEntitiesRestRequest {
                 throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Malformed request.");
             }
             final RaEndEntitySearchRequest raEndEntitySearchRequest = new RaEndEntitySearchRequest();
+            raEndEntitySearchRequest.setPageNumber(Math.max(0, searchEndEntitiesRestRequest.getCurrentPage()));
             raEndEntitySearchRequest.setMaxResults(searchEndEntitiesRestRequest.getMaxNumberOfResults());
             raEndEntitySearchRequest.setEepIds(new ArrayList<Integer>());
             raEndEntitySearchRequest.setCpIds(new ArrayList<Integer>());

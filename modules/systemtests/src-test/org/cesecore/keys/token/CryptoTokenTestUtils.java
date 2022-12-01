@@ -12,6 +12,10 @@
  *************************************************************************/
 package org.cesecore.keys.token;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.security.InvalidKeyException;
+import java.security.Security;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
@@ -27,10 +31,10 @@ import org.cesecore.certificates.ca.X509CA;
 import org.cesecore.certificates.ca.catoken.CAToken;
 import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
 import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
+import org.cesecore.keys.token.p11ng.cryptotoken.Pkcs11NgCryptoToken;
+import org.cesecore.keys.token.p11ng.provider.JackNJI11Provider;
 import org.cesecore.mock.authentication.tokens.TestAlwaysAllowLocalAuthenticationToken;
 import org.cesecore.util.EjbRemoteHelper;
-
-import static org.junit.Assert.assertNotNull;
 
 /**
  * Utility methods for creating CAs and CryptoTokens for tests. Both soft and PKCS#11 tokens.
@@ -80,13 +84,13 @@ public class CryptoTokenTestUtils {
         return createCryptoTokenForCA(authenticationToken, pin, true, false, tokenName, signKeySpec);
     }
 
-    public static int createCryptoTokenForCA(AuthenticationToken authenticationToken, char[] pin, boolean genenrateKeys, boolean pkcs11,
+    public static int createCryptoTokenForCA(AuthenticationToken authenticationToken, char[] pin, boolean generateKeys, boolean pkcs11,
             String tokenName, String signKeySpec) {
-        return createCryptoTokenForCAInternal(authenticationToken, pin, genenrateKeys, pkcs11, tokenName, signKeySpec);
+        return createCryptoTokenForCA(authenticationToken, pin, generateKeys, pkcs11, tokenName, signKeySpec, signKeySpec, false);
     }
 
-    private static int createCryptoTokenForCAInternal(AuthenticationToken authenticationToken, char[] pin, boolean genenrateKeys, boolean pkcs11,
-            String tokenName, String signKeySpec) {
+    public static int createCryptoTokenForCA(AuthenticationToken authenticationToken, char[] pin, boolean generateKeys, boolean pkcs11,
+            String tokenName, String signKeySpec, String encKeySpec, boolean pkcs11ng) {
         if (authenticationToken == null) {
             authenticationToken = alwaysAllowToken;
         }
@@ -120,6 +124,15 @@ public class CryptoTokenTestUtils {
             cryptoTokenProperties.setProperty(PKCS11CryptoToken.SLOT_LABEL_VALUE, SystemTestsConfiguration.getPkcs11SlotValue("1"));
             cryptoTokenProperties.setProperty(PKCS11CryptoToken.SLOT_LABEL_TYPE, SystemTestsConfiguration.getPkcs11SlotType(Pkcs11SlotLabelType.SLOT_NUMBER.getKey()).getKey());
             cryptoTokenClassName = PKCS11CryptoToken.class.getName();
+        } else if (pkcs11ng) {
+            if (SystemTestsConfiguration.getPkcs11Library() == null) {
+                throw new IllegalStateException("No crypto library found.");
+            }
+            Security.addProvider(new JackNJI11Provider());
+            cryptoTokenProperties.setProperty(PKCS11CryptoToken.SHLIB_LABEL_KEY, SystemTestsConfiguration.getPkcs11Library());
+            cryptoTokenProperties.setProperty(PKCS11CryptoToken.SLOT_LABEL_VALUE, SystemTestsConfiguration.getPkcs11SlotValue("1"));
+            cryptoTokenProperties.setProperty(PKCS11CryptoToken.SLOT_LABEL_TYPE, SystemTestsConfiguration.getPkcs11SlotType(Pkcs11SlotLabelType.SLOT_NUMBER.getKey()).getKey());
+            cryptoTokenClassName = Pkcs11NgCryptoToken.class.getName();
         } else {
             // For CA export tests
             cryptoTokenProperties.setProperty(CryptoToken.ALLOW_EXTRACTABLE_PRIVATE_KEY, Boolean.TRUE.toString());
@@ -130,9 +143,28 @@ public class CryptoTokenTestUtils {
         try {
             cryptoTokenId = cryptoTokenManagementSession.createCryptoToken(authenticationToken, fullTokenName, cryptoTokenClassName,
                     cryptoTokenProperties, null, pin);
-            if (genenrateKeys) {
-                cryptoTokenManagementSession.createKeyPair(authenticationToken, cryptoTokenId, CAToken.SOFTPRIVATESIGNKEYALIAS, KeyGenParams.builder(signKeySpec).build());
-                cryptoTokenManagementSession.createKeyPair(authenticationToken, cryptoTokenId, CAToken.SOFTPRIVATEDECKEYALIAS, KeyGenParams.builder("RSA1024").build());
+            if (generateKeys) {
+                try {
+                    cryptoTokenManagementSession.createKeyPair(authenticationToken, cryptoTokenId, 
+                            CAToken.SOFTPRIVATESIGNKEYALIAS, 
+                            KeyGenParams.builder(signKeySpec).build());
+                } catch (InvalidKeyException e) {
+                    if(pkcs11ng && e.getMessage().contains("is in use")) {
+                        // do nothing and use the existing key pair
+                    } else {
+                        throw e;
+                    }
+                }
+                try {
+                    cryptoTokenManagementSession.createKeyPair(authenticationToken, cryptoTokenId, 
+                            CAToken.SOFTPRIVATEDECKEYALIAS, KeyGenParams.builder(encKeySpec).build());
+                } catch (InvalidKeyException e) {
+                    if(pkcs11ng && e.getMessage().contains("is in use")) {
+                        // do nothing and use the existing key pair
+                    } else {
+                        throw e;
+                    }
+                }
             }
         } catch (Exception e) {
             // Cleanup token if we failed during the key creation stage

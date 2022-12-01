@@ -40,6 +40,7 @@ import static org.ejbca.ui.web.rest.api.io.request.SearchCertificatesRestRequest
  */
 public class SearchCertificatesRestRequest implements SearchCertificateCriteriaRequest {
 
+    @ApiModelProperty(value = "Maximum number of results", example = "10")
     @ValidSearchCertificateMaxNumberOfResults
     private Integer maxNumberOfResults;
     @ApiModelProperty(value = "A List of search criteria." )
@@ -208,6 +209,16 @@ public class SearchCertificatesRestRequest implements SearchCertificateCriteriaR
                         }
                         if (criteriaOperation == SearchCertificateCriteriaRestRequest.CriteriaOperation.BEFORE) {
                             raCertificateSearchRequest.setRevokedBefore(revocationDateLong);
+                        }
+                        break;
+                    }
+                    case UPDATE_TIME: {
+                        final long updateTimeLong = parseDateFromStringValue(criteriaValue).getTime();
+                        if (criteriaOperation == SearchCertificateCriteriaRestRequest.CriteriaOperation.AFTER) {
+                            raCertificateSearchRequest.setUpdatedAfter(updateTimeLong);
+                        }
+                        if (criteriaOperation == SearchCertificateCriteriaRestRequest.CriteriaOperation.BEFORE) {
+                            raCertificateSearchRequest.setUpdatedBefore(updateTimeLong);
                         }
                         break;
                     }
