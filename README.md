@@ -3,10 +3,10 @@
 The ISB CA is a separately maintained fork of the EJBCA Community CA maintanined by IS Blocks Ltd
 
 EJBCA is developed in Java and runs on a JVM such as OpenJDK, available on most platforms such as Linux and Windows although the recommended stack for the ISB CA is
-JDK 11
-Ubuntu 18, 20 or 22
-Maria DB
-KeyCloak 11
+* JDK 11
+* Ubuntu 18, 20 or 22
+* Maria DB
+* KeyCloak 18
 
 ## Get started
 
