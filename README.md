@@ -1,33 +1,45 @@
-# ISB CA 
+# EJBCA PKI [![Discuss](https://img.shields.io/badge/discuss-ejbca-ce?style=flat)](https://github.com/Keyfactor/ejbca-ce/discussions) 
 
-The ISB CA is a separately maintained fork of the EJBCA Community CA maintanined by IS Blocks Ltd
+EJBCA covers all your needs – from certificate management, registration and enrollment to certificate validation. 
 
-EJBCA is developed in Java and runs on a JVM such as OpenJDK, available on most platforms such as Linux and Windows although the recommended stack for the ISB CA is
-* JDK 17
-* Ubuntu 18, 20 or 22
-* Maria DB
-* KeyCloak 22
+Welcome to EJBCA – the Open Source Certificate Authority (software). EJBCA is one of the longest running CA software projects, providing time-proven robustness, reliability and flexibitlity. EJBCA is platform independent and can easily be scaled out to match the needs of your PKI requirements, whether you’re setting up a national eID, securing your industrial IoT platform or managing your own internal PKI for Enterprise or DevOps. 
 
-## Get started
+EJBCA is developed in Java and runs on a JVM such as OpenJDK, available on most platforms such as Linux and Windows. 
 
-To get started with **ISB CA**, clone **[isblocks-java-pki]()** and install it, see **[EJBCA Installation](https://doc.primekey.com/ejbca/ejbca-installation)**.
+There are two versions of EJBCA: 
+* **EJBCA Community** (EJBCA CE) - free and open source, OSI Certified Open Source Software
+* **EJBCA Enterprise** (EJBCA EE) - commercial and Common Criteria certified 
 
-In addition to the instructions above, it is required to export the EJBCA_HOSTNAME and the EJBCA_PORTNUMBER variable on the Linux system.
+OSI Certified is a certification mark of the Open Source Initiative.
 
-For example:
+## Get started 
 
-EJBCA_HOSTNAME=isbca01.isblocks.com
+To get started with **EJBCA Community**, clone **[ejbca-ce](https://github.com/Keyfactor/ejbca-ce)** and install it, see **[EJBCA Installation](https://doc.primekey.com/ejbca/ejbca-installation)**. 
 
-EJBCA_PORT_NUMBER=443
+You can also easily run EJBCA as a container from **[Dockerhub](https://hub.docker.com/r/keyfactor/ejbca-ce)**.
 
-Where the HOSTNAME represents the actual FQDN where the CA can be reached and EJBCA_PORT_NUMBER represents the https port number without certificate authentication (default 8442)
+## Community Support
 
+In our Community we welcome contributions. The Community software is open source and community supported, there is no support SLA, but a helpful best-effort Community.
+
+* To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab. 
+* If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
+* Ask the community for ideas: **[EJBCA Discussions](https://github.com/Keyfactor/ejbca-ce/discussions)**.  
+* Read more in our documentation: **[EJBCA Documentation](https://doc.primekey.com/ejbca)**.
+* See release information: **[EJBCA Release information](https://doc.primekey.com/ejbca/ejbca-release-information)**. 
+* Read more on the open source project website: **[EJBCA website](https://www.ejbca.org/)**.   
 
 ## Commercial Support
-Commercial support is available from IS Blocks Ltd. Contact us for more details at support@isblocks.com
+Commercial support is available for **[EJBCA Enterprise](https://www.primekey.com/products/ejbca-enterprise/)**.
 
 ## License
-ISB CA is licensed under the LGPL license and thus compliant with the original licence as published by Keyfactor, please see **[LICENSE](LICENSE)**.
+EJBCA Community is licensed under the LGPL license, please see **[LICENSE](LICENSE)**. 
 
-## Disclaimer
-IS Blocks does not have any relationship with Keyfactor
+## Related projects 
+
+* [Keyfactor/ansible-ejbca-signserver-playbooks](https://github.com/Keyfactor/ansible-ejbca-signserver-playbooks) 
+* [Keyfactor/ejbca-tools](https://github.com/Keyfactor/ejbca-tools) 
+* [Keyfactor/ejbca-vault-plugin](https://github.com/Keyfactor/ejbca-vault-plugin) 
+* [Keyfactor/ejbca-vault-monitor](https://github.com/Keyfactor/ejbca-vault-monitor) 
+* [Keyfactor/ejbca-cert-cvc](https://github.com/Keyfactor/ejbca-cert-cvc) 
+* [Keyfactor/ejbca-containers](https://github.com/Keyfactor/ejbca-containers) 
