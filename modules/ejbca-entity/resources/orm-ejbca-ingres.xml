@@ -116,6 +116,7 @@
             <basic fetch="EAGER" name="serialNumber"><column name="serialNumber" column-definition="VARCHAR(256)" nullable="false"/></basic>
             <basic fetch="EAGER" name="notBefore"><column name="notBefore" column-definition="INT8" nullable="true"/></basic>
             <basic fetch="EAGER" name="expireDate"><column name="expireDate" column-definition="INT8" nullable="false"/></basic>
+            <basic fetch="EAGER" name="invalidityDate"><column name="invalidityDate" column-definition="INT8" nullable="true"/></basic>
             <basic fetch="EAGER" name="revocationDate"><column name="revocationDate" column-definition="INT8" nullable="false"/></basic>
             <basic fetch="EAGER" name="revocationReason"><column name="revocationReason" column-definition="INT4" nullable="false"/></basic>
             <!-- We need to allow this field to be null in external OCSP responder mode and it's easier if the tables look the same! -->
@@ -150,6 +151,7 @@
             <basic fetch="EAGER" name="serialNumber"><column name="serialNumber" column-definition="VARCHAR(256)" nullable="false"/></basic>
             <basic fetch="EAGER" name="notBefore"><column name="notBefore" column-definition="INT8" nullable="true"/></basic>
             <basic fetch="EAGER" name="expireDate"><column name="expireDate" column-definition="INT8" nullable="false"/></basic>
+            <basic fetch="EAGER" name="invalidityDate"><column name="invalidityDate" column-definition="INT8" nullable="true"/></basic>
             <basic fetch="EAGER" name="revocationDate"><column name="revocationDate" column-definition="INT8" nullable="false"/></basic>
             <basic fetch="EAGER" name="revocationReason"><column name="revocationReason" column-definition="INT4" nullable="false"/></basic>
             <!-- We need to allow this field to be null in external OCSP responder mode and it's easier if the tables look the same! -->
@@ -338,7 +340,7 @@
             <basic fetch="EAGER" name="requestdate"><column name="requestDate" column-definition="INT8" nullable="false"/></basic>
             <basic fetch="EAGER" name="expiredate"><column name="expireDate" column-definition="INT8" nullable="false"/></basic>
             <basic fetch="EAGER" name="remainingapprovals"><column name="remainingApprovals" column-definition="INT4" nullable="false"/></basic>
-            <basic fetch="EAGER" name="subjectDn"><column name="subjectDn" column-definition="VARCHAR(256)"/></basic>
+            <basic fetch="EAGER" name="subjectDn"><column name="subjectDn" column-definition="VARCHAR(400)"/></basic>
             <basic fetch="EAGER" name="email"><column name="email" column-definition="VARCHAR(256)"/></basic>
             <basic fetch="EAGER" name="rowProtection"><column name="rowProtection" column-definition="LONG VARCHAR"/><lob/></basic>
             <version name="rowVersion"><column name="rowVersion" column-definition="INT4" nullable="false"/></version>

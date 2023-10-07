@@ -39,12 +39,10 @@ import javax.persistence.TypedQuery;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.ErrorCode;
 import org.cesecore.audit.enums.EventStatus;
 import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
 import org.cesecore.authentication.AuthenticationFailedException;
 import org.cesecore.authentication.tokens.AuthenticationToken;
-import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.certificates.ca.ApprovalRequestType;
 import org.cesecore.certificates.ca.CaSessionLocal;
 import org.cesecore.certificates.certificate.CertificateInfo;
@@ -54,11 +52,7 @@ import org.cesecore.certificates.certificateprofile.CertificateProfileSessionLoc
 import org.cesecore.certificates.endentity.EndEntityInformation;
 import org.cesecore.configuration.GlobalConfigurationSessionLocal;
 import org.cesecore.jndi.JndiConstants;
-import org.cesecore.roles.member.RoleMember;
 import org.cesecore.roles.member.RoleMemberSessionLocal;
-import org.cesecore.util.Base64;
-import org.cesecore.util.CertTools;
-import org.cesecore.util.CryptoProviderTools;
 import org.cesecore.util.ProfileID;
 import org.cesecore.util.ValueExtractor;
 import org.cesecore.util.ui.DynamicUiProperty;
@@ -96,6 +90,11 @@ import org.ejbca.util.mail.MailSender;
 import org.ejbca.util.query.IllegalQueryException;
 import org.ejbca.util.query.Query;
 import org.ejbca.util.query.QueryWrapper;
+
+import com.keyfactor.ErrorCode;
+import com.keyfactor.util.Base64;
+import com.keyfactor.util.CertTools;
+import com.keyfactor.util.CryptoProviderTools;
 
 /**
  * Keeps track of approval requests and their approval or rejects.
@@ -1016,32 +1015,6 @@ public class ApprovalSessionBean implements ApprovalSessionLocal, ApprovalSessio
         } else {
             //Otherwise just return the number of remaining approvals
             return result;
-        }
-    }
-    
-    @Override
-    public void updateApprovalRights(AuthenticationToken admin, int roleId, String roleName) throws AuthorizationDeniedException {
-        // Update Approval Profile Partitions with updated AccessUserAspects
-        List<RoleMember> roleMembers = roleMemberSession.getRoleMembersByRoleId(admin, roleId);
-        Collection<ApprovalProfile> approvalProfileList = approvalProfileSession.getApprovalProfilesList();
-        for (ApprovalProfile approvalProfile : approvalProfileList) {
-            Boolean isApprovalProfileUpdated = approvalProfileSession.updateApprovalProfileRightsByRoleId(roleMembers, approvalProfile, roleId, roleName);
-            if (isApprovalProfileUpdated) {
-                approvalProfileSession.changeApprovalProfile(admin, approvalProfile);
-            }
-        }
-        // Update existing Approvals
-        List<ApprovalData> approvalDataList = approvalSession.findWaitingForApprovalApprovalDataLocal();
-        for (ApprovalData data : approvalDataList) {
-            if (data == null || data.hasRequestOrApprovalExpired() || data.getApprovalRequest() == null || data.getApprovalRequest().getApprovalProfile() == null) {
-                continue;
-            }
-            ApprovalRequest approvalRequest = data.getApprovalRequest();
-            ApprovalProfile approvalProfile = approvalRequest.getApprovalProfile();
-            Boolean isApprovalProfileUpdated = approvalProfileSession.updateApprovalProfileRightsByRoleId(roleMembers, approvalProfile, roleId, roleName);
-            if (isApprovalProfileUpdated) {
-                approvalSession.updateApprovalRequest(data.getId(), approvalRequest);
-            }
         }
     }
 }

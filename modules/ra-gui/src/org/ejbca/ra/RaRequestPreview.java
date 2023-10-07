@@ -17,9 +17,12 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 import org.cesecore.certificates.ca.CAInfo;
+import org.cesecore.certificates.certificate.CertificateConstants;
 import org.cesecore.certificates.certificateprofile.CertificateProfile;
 import org.ejbca.core.model.ra.EndEntityInformationFiller;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfile;
+
+import com.keyfactor.util.certificate.DnComponents;
 
 /** 
  * UI representation of a certificate preview to be confirmed before enrollment.
@@ -37,6 +40,12 @@ public class RaRequestPreview {
     private String validity = "";
     private List<String> keyUsages = new ArrayList<>();
     private List<String> extendedKeyUsages = new ArrayList<>();
+    
+    // SSH certificate fields
+    private boolean sshCertificatePreview; 
+    private String sshExtensions = "";
+    private String sshPrincipals = "";
+    private String sshCertificateType = "";
 
     private boolean more = false;
     private int styleRowCallCounter = 0;
@@ -50,17 +59,26 @@ public class RaRequestPreview {
             return;
         }
         validity = certificateProfile.getEncodedValidity();
-        keyUsages.clear();
-        final boolean[] keyUsageArray = certificateProfile.getKeyUsage();
-        for (int i=0; i<keyUsageArray.length; i++) {
-            if (keyUsageArray[i]) {
-                keyUsages.add(String.valueOf(i));
+        if(certificateProfile.getType()==CertificateConstants.CERTTYPE_SSH) {
+            sshCertificatePreview = true;
+            sshCertificateType = certificateProfile.getSshCertificateType().getLabel();
+            StringBuilder sb = new StringBuilder();
+            certificateProfile.getSshExtensions().forEach(x -> sb.append(x + ", "));
+            sshExtensions = sb.toString();
+        } else {
+            sshCertificatePreview = false;
+            keyUsages.clear();
+            final boolean[] keyUsageArray = certificateProfile.getKeyUsage();
+            for (int i=0; i<keyUsageArray.length; i++) {
+                if (keyUsageArray[i]) {
+                    keyUsages.add(String.valueOf(i));
+                }
             }
-        }
-        extendedKeyUsages.clear();
-        final List<String> extendedKeyUsages = certificateProfile.getExtendedKeyUsageOids();
-        if (extendedKeyUsages != null && certificateProfile.getUseExtendedKeyUsage()) {
-            this.extendedKeyUsages.addAll(extendedKeyUsages);
+            extendedKeyUsages.clear();
+            final List<String> extendedKeyUsages = certificateProfile.getExtendedKeyUsageOids();
+            if (extendedKeyUsages != null && certificateProfile.getUseExtendedKeyUsage()) {
+                this.extendedKeyUsages.addAll(extendedKeyUsages);
+            }
         }
     }
     
@@ -85,26 +103,30 @@ public class RaRequestPreview {
         if(profile ==null) {
             this.subjectAlternativeName =subjectAlternativeName.getUpdatedValue();
         } else {
-            this.subjectAlternativeName = getAddDnsFromCnToAltName(subjectDn, subjectAlternativeName.getUpdatedValue(), profile);
+            String sanUpdatedValue = subjectAlternativeName.getUpdatedValue();
+            sanUpdatedValue = copyCnToAltName(subjectDn, sanUpdatedValue, profile, DnComponents.DNSNAME);
+            this.subjectAlternativeName = copyCnToAltName(subjectDn, sanUpdatedValue, profile, DnComponents.UPN);
         }
     }
 
     /**
-     * Update subjectAltName with dns fields with value from CN
+     * Update subjectAltName with dns and upns fields with value from CN
      * @param subjectDn subjectDn
      * @param altName altName
      * @param profile EEProfile
-     * @return altName updated with dns copied from CN
+     * @return altName updated with dns and upns copied from CN
      */
-    private String getAddDnsFromCnToAltName(final String subjectDn, String altName, final EndEntityProfile profile) {
-        String dnsNameValueFromCn = EndEntityInformationFiller.copyDnsNameValueFromCn(profile, subjectDn);
+    private String copyCnToAltName(final String subjectDn, String altName, final EndEntityProfile profile, final String specifiedDnType) {
+        String specifiedDnTypeValueFromCn = EndEntityInformationFiller.copyCnToAltName(profile, subjectDn, specifiedDnType);
         if (altName == null) {
             altName = "";
         }
-        if (StringUtils.isNotEmpty(altName) && StringUtils.isNotEmpty(dnsNameValueFromCn)) {
-            altName += ", ";
+        if (StringUtils.isNotEmpty(specifiedDnTypeValueFromCn) && !altName.contains(specifiedDnTypeValueFromCn)) {
+            if (StringUtils.isNotEmpty(altName)) {
+                altName += ", ";
+            }
+            altName += specifiedDnTypeValueFromCn;
         }
-        altName += dnsNameValueFromCn;
         return altName;
     }
     
@@ -239,5 +261,27 @@ public class RaRequestPreview {
         this.extendedKeyUsages = extendedKeyUsages;
     }
     
+    public boolean isSshCertificatePreview() {
+        return sshCertificatePreview;
+    }
+
+    public String getSshExtensions() {
+        return sshExtensions;
+    }
+
+    public String getSshPrincipals() {
+        return sshPrincipals;
+    }
+
+    public String getSshCertificateType() {
+        return sshCertificateType;
+    }
+    
+    public void updateSshPrincipals(List<String> principals) {
+        StringBuilder sb = new StringBuilder();
+        principals.forEach(x -> sb.append(x + ", "));
+        sshPrincipals = sb.toString();
+    }
+
     
 }

@@ -26,7 +26,6 @@ import org.cesecore.certificates.ca.CADoesntExistsException;
 import org.cesecore.certificates.ca.CAInfo;
 import org.cesecore.certificates.ca.IllegalNameException;
 import org.cesecore.certificates.certificate.CertificateDataWrapper;
-import org.cesecore.certificates.certificate.CertificateWrapper;
 import org.cesecore.certificates.certificate.exception.CertificateSerialNumberException;
 import org.cesecore.certificates.certificateprofile.CertificateProfile;
 import org.cesecore.certificates.endentity.EndEntityInformation;
@@ -41,6 +40,8 @@ import org.ejbca.core.model.ra.CustomFieldException;
 import org.ejbca.core.model.ra.RevokeBackDateNotAllowedForProfileException;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfile;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfileValidationException;
+
+import com.keyfactor.util.certificate.CertificateWrapper;
 /**
  * Proxy for identifying all calls that are needed in the RaMasterApi to fully support ACME.
  *
@@ -133,6 +134,9 @@ public interface AcmeRaMasterApiSessionLocal {
     /** @see org.ejbca.core.model.era.RaMasterApi#getAuthorizedCAInfos(AuthenticationToken) */
     IdNameHashMap<CAInfo> getAuthorizedCAInfos(AuthenticationToken authenticationToken);
 
+    /** @see org.ejbca.core.model.era.RaMasterApi#isAuthorizedNoLogging(AuthenticationToken, String...) */
+    boolean isAuthorizedNoLogging(AuthenticationToken authenticationToken, String...resources);
+
     /** @see org.ejbca.core.model.era.RaMasterApi#searchUser(AuthenticationToken, String) */
     EndEntityInformation searchUser(AuthenticationToken authenticationToken, String username);
     
@@ -157,5 +161,7 @@ public interface AcmeRaMasterApiSessionLocal {
     <T extends ConfigurationBase> T getGlobalConfiguration(Class<T> type);
     
     boolean isPeerAuthorizedAcme();
+
+    List<CertificateWrapper> searchForCertificateChain(AuthenticationToken authenticationToken, String fingerprint, String rootSubjectDnHash);
 
 }

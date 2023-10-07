@@ -4,7 +4,6 @@
     xmlns:f="http://xmlns.jcp.org/jsf/core"
     xmlns:h="http://xmlns.jcp.org/jsf/html"
     xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-    xmlns:t="http://myfaces.apache.org/tomahawk"
 	xmlns:c="http://xmlns.jcp.org/jsp/jstl/core">
 <ui:remove>
 	<!--
@@ -165,16 +164,18 @@
 							rendered="#{not editCAsMBean.caExternal and not editCAsMBean.renderCvcAvailable and editCAsMBean.cryptoTokenIdParamNull}" />
 				</h:panelGroup>
 
-				<h:panelGroup
-						rendered="#{not editCAsMBean.caExternal and not editCAsMBean.renderCvcAvailable and editCAsMBean.failedCryptoTokenExist}">
-					<h:outputLabel value="Failed to access these CryptoTokens:"
-								   style="font-weight: bold;" />
-					<ui:repeat var="failedCrypto"
-							   value="editCAsMBean.failedCryptoTokenLinkMap().entrySet().toArray()">
-						<h:outputLink value="#{failedCrypto.key}" />
-						<h:outputText value="#{failedCrypto.value}" />
-					</ui:repeat>
-				</h:panelGroup>
+                <h:panelGroup
+                        rendered="#{not editCAsMBean.caExternal and not editCAsMBean.renderCvcAvailable and editCAsMBean.failedCryptoTokenExist}">
+                    <h:outputLabel value="Failed to access these CryptoTokens:"
+                                   style="font-weight: bold;" />
+                </h:panelGroup>
+                <h:panelGroup
+                        rendered="#{not editCAsMBean.caExternal and not editCAsMBean.renderCvcAvailable and editCAsMBean.failedCryptoTokenExist}">
+                    <ui:repeat var="failedCrypto"
+                               value="#{editCAsMBean.failedCryptoTokenNames}">
+                        <h:outputText value="#{failedCrypto}" /> <br/>
+                    </ui:repeat>
+                </h:panelGroup>
 
 				<h:panelGroup
 					rendered="#{editCAsMBean.editCANotUninitializedNotExternal and not editCAsMBean.renderCvcAvailable}">
@@ -196,6 +197,7 @@
 				<h:panelGroup
 					rendered="#{not editCAsMBean.editCANotUninitializedNotExternal and not editCAsMBean.caExternal and not editCAsMBean.renderCvcAvailable}">
 					<h:selectOneMenu name="#{web.text.SELECT_SIGNATUREALGORITHM}"
+						id="signatureAlgorithmParam"
 						value="#{editCAsMBean.signatureAlgorithmParam}">
 						<f:selectItems value="#{editCAsMBean.availableSigningAlgList}" />
 						<f:ajax event="change" render="editcapage" />
@@ -342,28 +344,6 @@
 						<f:selectItems value="#{editCAsMBean.getKeyAliasesListWithDefault('testKey')}" />
 					</h:selectOneMenu>
 				</h:panelGroup>
-
-
-				<h:panelGroup
-                    rendered="#{(not editCAsMBean.editCA or editCAsMBean.currentCaCryptoTokenPresent) and not editCAsMBean.renderCvcAvailable
-									and not editCAsMBean.caTypeCits and not editCAsMBean.caTypeCits}">
-					<h:outputLabel for="selectsize"
-						value="#{web.text.EXTSERVICESKEYSPEC}" />
-					<h:outputText
-						value="#{web.ejbcaWebBean.getHelpReference('/CA_Fields.html#Extended_Services_Key_Specification')}"
-						escape="false" styleClass="helpReference" />
-				</h:panelGroup>
-
-				<h:panelGroup
-                    rendered="#{(not editCAsMBean.editCA or editCAsMBean.currentCaCryptoTokenPresent) and not editCAsMBean.renderCvcAvailable
-									and not editCAsMBean.caTypeCits}">
-					<h:selectOneMenu id="selectsize"
-						value="#{editCAsMBean.caInfoDto.signKeySpec}"
-                        disabled="#{not editCAsMBean.hasEditRight}">
-						<f:selectItems value="#{editCAsMBean.exTServicesKeySpecList}" />
-					</h:selectOneMenu>
-				</h:panelGroup>
-
 
 				<h:panelGroup
 					rendered="#{not editCAsMBean.editCA or editCAsMBean.currentCaCryptoTokenPresent and not editCAsMBean.renderCvcAvailable}">
@@ -989,18 +969,18 @@
 						<h:outputText id="cert_issuerdn" value="#{editCAsMBean.caIssuerDN}" />
 					</h:panelGroup>
 
-					<h:panelGroup>
+					<h:panelGroup rendered="#{not editCAsMBean.caInfoDto.caTypeSsh}">
 						<h:outputLabel for="cert_signedby" value="#{web.text.SIGNEDBY}" />
 					</h:panelGroup>
 
 					<h:panelGroup
-						rendered="#{editCAsMBean.editCA and not editCAsMBean.caUninitialized}">
+						rendered="#{not editCAsMBean.caInfoDto.caTypeSsh and editCAsMBean.editCA and not editCAsMBean.caUninitialized}">
 						<h:outputText id="cert_signedby"
 							value="#{editCAsMBean.signedByAsText}" />
 					</h:panelGroup>
 
 					<h:panelGroup
-						rendered="#{not editCAsMBean.editCA or editCAsMBean.caUninitialized}">
+						rendered="#{not editCAsMBean.caInfoDto.caTypeSsh and (not editCAsMBean.editCA or editCAsMBean.caUninitialized)}">
 						<h:selectOneMenu id="cadatasignedby" value="#{editCAsMBean.caInfoDto.signedBy}"
 							disabled="#{not editCAsMBean.hasEditRight}">
 							<f:selectItems value="#{editCAsMBean.signedByList}" />
@@ -1152,13 +1132,13 @@
 						<h:outputLabel for="checkboxuseldapdnorder" value="#{web.text.USE}" />
 					</h:panelGroup>
 
-					<h:panelGroup rendered="#{not editCAsMBean.caInfoDto.caTypeCVC and not editCAsMBean.caExternal}">
+					<h:panelGroup rendered="#{not editCAsMBean.caInfoDto.caTypeSsh and not editCAsMBean.caInfoDto.caTypeCVC and not editCAsMBean.caExternal}">
 						<h:outputLabel for="caSerialNumberOctetSize" value="#{web.text.SERIALNUMBER_OCTET_SIZE}" />
 						<h:outputText
 							value="#{web.ejbcaWebBean.getHelpReference('/CA_Fields.html#Serial_Number_Octet_Size')}"
 							escape="false" styleClass="helpReference"/>
 					</h:panelGroup>
-					<h:panelGroup rendered="#{not editCAsMBean.caInfoDto.caTypeCVC and not editCAsMBean.caExternal}">
+					<h:panelGroup rendered="#{not editCAsMBean.caInfoDto.caTypeSsh and not editCAsMBean.caInfoDto.caTypeCVC and not editCAsMBean.caExternal}">
 						<h:inputText id="caSerialNumberOctetSize" size="4" maxlength="2"
 							value="#{editCAsMBean.caInfoDto.caSerialNumberOctetSize}"
 							disabled="#{not editCAsMBean.hasEditRight}">
@@ -1226,6 +1206,46 @@
 							title="#{web.text.VIEW_CACERTIFICATE_TITLE} #{web.text.POPUP_WINDOW}"
 							value="#{web.text.VIEW_CERTIFICATE}"
 							disabled="#{not editCAsMBean.editCA or editCAsMBean.waitingForResponse}" />
+					</h:panelGroup>
+					
+					<h:panelGroup
+						rendered="#{editCAsMBean.caInfoDto.caTypeX509 and (not editCAsMBean.waitingResponse) 
+									and (not editCAsMBean.caUninitialized)}">
+						<h:outputLabel 
+							value="#{web.text.CACERTIFICATEALTERNATECHAIN}" style="font-weight: bold;" />
+						<br />
+						<h:outputText styleClass="smallHelp"
+							value="#{web.text.CACERTIFICATEALTERNATECHAIN_HELP}"/>
+						<br/>
+						<h:outputText
+							value="#{web.ejbcaWebBean.getHelpReference('/CA_Fields.html#X509CrossCertificateChain(s)')}"
+							escape="false" styleClass="helpReference" />
+					</h:panelGroup>
+					<h:panelGroup 
+						rendered="#{editCAsMBean.caInfoDto.caTypeX509 and (not editCAsMBean.waitingForResponse) 
+									and (not editCAsMBean.caUninitialized)}">
+							<h:panelGroup id="alternatecertchainssection">
+								<ui:repeat value="#{editCAsMBean.alternateCertChains}" var="altchain">
+									<h:selectBooleanCheckbox rendered="#{editCAsMBean.editCA and editCAsMBean.hasEditRight}"
+										value="#{editCAsMBean.removeAlternateCertChain[altchain]}">
+										<f:ajax/>
+									</h:selectBooleanCheckbox>
+									<h:outputLink
+										value="#{editCAsMBean.getDownloadCertLink()}?cmd=cacertaltchain&amp;level=0&amp;issuer=#{editCAsMBean.escapeDnString(editCAsMBean.caInfoDto.caSubjectDN)}&amp;root=#{editCAsMBean.escapeDnString(altchain)}">
+										<h:outputText value="&nbsp;&nbsp;#{altchain}&nbsp;" style="font-size: 11pt"/>
+									</h:outputLink>
+									<br/>
+								</ui:repeat>
+							</h:panelGroup>
+							<h:outputText value="#{web.text.NONE}" rendered="#{empty editCAsMBean.alternateCertChains}"/>
+							<br/>
+							<h:commandButton type="button" 
+							    rendered="#{editCAsMBean.editCA and editCAsMBean.hasEditRight and (not empty editCAsMBean.alternateCertChains)}"
+								name="altcertchainremove"
+								action="#{editCAsMBean.unlinkAlternateCertChains}"
+								value="#{web.text.REMOVE}">
+								<f:ajax render=":editcapage:alternatecertchainssection"/>
+							</h:commandButton>
 					</h:panelGroup>
 				</c:if>
 					
@@ -1548,12 +1568,12 @@
 					<f:validator validatorId="org.ejbca.ui.web.admin.ca.validators.CRLFieldValidator"/>
 					</h:inputText>	
 						&nbsp;
-					<h:outputText styleClass="help"
-						value="#{web.text.YEAR365DAYS}  ,  #{web.text.MO30DAYS}" />
+					<h:outputText styleClass="help" value="#{web.text.YEAR365DAYS}  ,  #{web.text.MO30DAYS}" />
 					<br />
 					<h:outputLabel value="#{web.text.CRL_CA_DELTACRLPERIOD_HELP}" styleClass="smallHelp" />
 				</h:panelGroup>
-				
+
+				<!-- Generate CRL Upon Revocation -->
 				<h:panelGroup rendered="#{not editCAsMBean.caExternal}">
 					<h:outputText value="#{web.text.CRL_CA_GENERATEUPONREVOCATION}" 
 						rendered="#{not editCAsMBean.caExternal}" />
@@ -1570,6 +1590,33 @@
 					<h:outputLabel value="#{web.text.CRL_CA_GENERATEUPONREVOCATION_HELP}" styleClass="smallHelp" />
 				</h:panelGroup>
 
+				<!-- Allow changing revocation reason -->
+				<h:panelGroup rendered="#{not editCAsMBean.caExternal}">
+					<h:outputText value="#{web.text.ALLOW_CHANGING_REVOCATION_REASON}" rendered="#{not editCAsMBean.caExternal}" />
+				</h:panelGroup>
+
+				<h:panelGroup rendered="#{not editCAsMBean.caExternal}">
+					<h:selectBooleanCheckbox id="checkboxallowchangingrevocationreason"
+											 value="#{editCAsMBean.caInfoDto.allowChangingRevocationReason}"
+											 disabled="#{not editCAsMBean.hasEditRight}">
+					</h:selectBooleanCheckbox>
+					<h:outputLabel for="checkboxallowchangingrevocationreason" value="#{web.text.USE}" />
+				</h:panelGroup>
+
+				<!-- Allow invalidity date -->
+				<h:panelGroup>
+					<h:outputText value="#{web.text.ALLOW_INVALIDITY_DATE}" />
+				</h:panelGroup>
+
+				<h:panelGroup>
+					<h:selectBooleanCheckbox id="checkboxallowinvaliditydate"
+											 value="#{editCAsMBean.caInfoDto.allowInvalidityDate}"
+											 disabled="#{not editCAsMBean.hasEditRight}">
+					</h:selectBooleanCheckbox>
+					<h:outputLabel for="checkboxallowinvaliditydate" value="#{web.text.USE}" />
+				</h:panelGroup>
+
+				<!-- Publishers -->
 				<h:panelGroup rendered="#{not editCAsMBean.caExternal}">
 					<h:outputText value="#{web.text.PUBLISHERS}"
 						rendered="#{not editCAsMBean.caExternal}" />
@@ -1799,35 +1846,6 @@
 					</h:selectManyListbox>
 				</h:panelGroup>
 
-				<h:panelGroup rendered="#{editCAsMBean.renderCmsInfo}">
-					<h:outputLabel for="checkboxactivatecmsservice"
-						value="#{web.text.CMSSERVICE}" />
-					<h:outputText
-						value="#{web.ejbcaWebBean.getHelpReference('/CA_Fields.html#Extended_Services_Key_Specification')}"
-						escape="false" styleClass="helpReference" />
-				</h:panelGroup>
-
-				<h:panelGroup rendered="#{editCAsMBean.renderCmsInfo}">
-					<h:selectBooleanCheckbox name="checkboxactivatecmsservice"
-						id="checkboxactivatecmsservice"
-						value="#{editCAsMBean.caInfoDto.serviceCmsActive}"
-						rendered="#{editCAsMBean.renderCmsInfo}"
-						disabled="#{not editCAsMBean.hasEditRight or editCAsMBean.cmsButtonDisabled or editCAsMBean.signedByExternal}" />
-					<h:outputLabel for="checkboxactivatecmsservice"
-						value="#{web.text.ACTIVATE}" />
-			    &nbsp;&nbsp;&nbsp;
-				<h:commandButton 
-						value="#{web.text.REVOKERENEWCMSCERT}"
-						disabled="#{not editCAsMBean.hasEditRight or editCAsMBean.waitingForResponse}"
-						rendered="#{editCAsMBean.editCA and not editCAsMBean.caUninitialized}"
-						action="#{editCAsMBean.renewAndRevokeCmsCertificate}" />
-				<h:commandButton type="button"
-						title="#{web.text.VIEW_CMSCERTIFICATE_TITLE} #{web.text.POPUP_WINDOW}"
-						value="#{web.text.VIEW_CMSCERTIFICATE}"
-						onclick="viewcacert('#{editCAsMBean.cmsCertLink}')"
-						rendered="#{editCAsMBean.renderViewCmsCert}" />
-				</h:panelGroup>
-
 				<h:panelGroup>
 					<h:outputLabel for="checkboxfinishuser"
 						value="#{web.text.FINISHUSER}" />
@@ -1932,6 +1950,8 @@
 					<h:outputText
 						value="#{web.ejbcaWebBean.getHelpReference('/Managing_CAs.html')}"
 						escape="false" styleClass="helpReference"/>
+                    <br />
+                    <h:outputText value="#{web.text.RENEWCA_HELP}" styleClass="smallHelp" />
 				</h:panelGroup>
 
 
@@ -2085,7 +2105,7 @@
 						</h:panelGroup>
 						
 						<h:panelGroup>
-							<t:inputFileUpload name="filerecievefilemakerequest"
+							<h:inputFile name="filerecievefilemakerequest"
 								align="right" value="#{editCAsMBean.fileRecieveFileMakeRequest}" />
 						</h:panelGroup>
 						<h:panelGroup />
@@ -2116,7 +2136,7 @@
 							<h:outputText value="#{web.text.EXTERNALLYSIGNED_CACERT_HELP}" styleClass="smallHelp" />
 						</h:panelGroup>
 						<h:panelGroup rendered="#{editCAsMBean.editCA}">
-							<t:inputFileUpload name="filerecievefilerecieverequest"
+							<h:inputFile name="filerecievefilerecieverequest"
 								value="#{editCAsMBean.fileRecieveFileRecieveRequest}" />
 						</h:panelGroup>
 
@@ -2134,6 +2154,21 @@
 								disabled="#{not editCAsMBean.hasEditRight}" />
 							<h:outputText for="checkboxfuturerollover"
 								value="#{web.text.EXTERNALLYSIGNED_FUTUREROLLOVER}" />
+						</h:panelGroup>
+						<h:panelGroup
+							rendered="#{editCAsMBean.editCA and editCAsMBean.caInfoDto.caTypeX509}">
+							<h:outputText
+								value="#{web.text.EXTERNALLYSIGNED_CROSS_CERT_HELP}"
+								styleClass="smallHelp" />
+						</h:panelGroup>
+						<h:panelGroup
+							rendered="#{editCAsMBean.editCA and editCAsMBean.caInfoDto.caTypeX509}">
+							<h:selectBooleanCheckbox name="checkboxuploadAsAlternateChain"
+								id="checkboxuploadAsAlternateChain"
+								value="#{editCAsMBean.uploadAsAlternateChain}"
+								disabled="#{not editCAsMBean.hasEditRight}" />
+							<h:outputText for="checkboxuploadAsAlternateChain"
+								value="#{web.text.EXTERNALLYSIGNED_CROSS_CERT}" />
 						</h:panelGroup>
 						<h:panelGroup />
 						<h:panelGroup rendered="#{editCAsMBean.editCA}">
@@ -2167,7 +2202,7 @@
 							value="#{web.text.IMPORTED_CA_RENEWAL_NEWCERT_HELP}" styleClass="smallHelp" />
 					</h:panelGroup>
 					<h:panelGroup>
-						<t:inputFileUpload 
+						<h:inputFile 
 							name="filerecievefileimportrenewal" 
 							value="#{editCAsMBean.fileRecieveFileImportRenewal}"/>
 					</h:panelGroup>

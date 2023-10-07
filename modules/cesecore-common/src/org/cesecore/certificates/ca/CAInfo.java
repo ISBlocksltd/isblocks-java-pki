@@ -27,11 +27,12 @@ import org.cesecore.certificates.ca.catoken.CAToken;
 import org.cesecore.certificates.ca.extendedservices.ExtendedCAServiceInfo;
 import org.cesecore.certificates.ca.ssh.SshCa;
 import org.cesecore.certificates.certificate.CertificateConstants;
-import org.cesecore.certificates.certificate.CertificateWrapper;
-import org.cesecore.util.CertTools;
-import org.cesecore.util.EJBTools;
 import org.cesecore.util.SimpleTime;
-import org.cesecore.util.StringTools;
+
+import com.keyfactor.util.CertTools;
+import com.keyfactor.util.EJBTools;
+import com.keyfactor.util.StringTools;
+import com.keyfactor.util.certificate.CertificateWrapper;
 
 /**
  * Holds non sensitive information about a CA.
@@ -94,6 +95,8 @@ public abstract class CAInfo implements Serializable {
     /** Default value 0 = disabled */
     protected long deltacrlperiod = 0;
     protected boolean generateCrlUponRevocation = false;
+    protected boolean allowChangingRevocationReason = false;
+    protected boolean allowInvalidityDate = false;
     protected Collection<Integer> crlpublishers;
     protected Collection<Integer> validators;
     protected boolean keepExpiredCertsOnCRL = false;
@@ -368,6 +371,22 @@ public abstract class CAInfo implements Serializable {
 
     public void setGenerateCrlUponRevocation(boolean generate) {
         generateCrlUponRevocation = generate;
+    }
+
+    public boolean isAllowChangingRevocationReason() {
+        return allowChangingRevocationReason;
+    }
+
+    public void setAllowChangingRevocationReason(boolean allow) {
+        this.allowChangingRevocationReason = allow;
+    }
+
+    public boolean isAllowInvalidityDate() {
+        return allowInvalidityDate;
+    }
+
+    public void setAllowInvalidityDate(boolean allowInvalidityDate) {
+        this.allowInvalidityDate = allowInvalidityDate;
     }
 
     public long getCRLIssueInterval() {

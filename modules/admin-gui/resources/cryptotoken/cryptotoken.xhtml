@@ -116,8 +116,7 @@
 
 				<!-- Authentication Type - this hides and shows the dependent controls below -->
 				<h:panelGroup rendered="#{cryptoTokenMBean.currentCryptoToken.showAzureCryptoToken}">
-					<h:outputLabel for="currentCryptoTokenAuthenticationType"
-						value="#{web.text.CRYPTOTOKEN_KEYVAULT_AUTH} "/>
+					<h:outputLabel for="currentCryptoTokenAuthenticationType" value="#{web.text.CRYPTOTOKEN_KEYVAULT_AUTH} "/>
                     <h:outputText id="currentCryptoTokenAuthenticationTypeHelp" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
 				</h:panelGroup>
                 <h:panelGroup
@@ -532,6 +531,25 @@
                         rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
                 </h:panelGroup>
 
+				<!-- Fortanix Base URL -->
+                <h:panelGroup id="currentCryptoTokenFortanixBaseAddressPanelGroup"
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showFortanixCryptoToken}">
+                    <h:outputLabel id="currentCryptoTokenFortanixBaseAddressLabel"
+                        for="currentCryptoTokenFortanixBaseAddress"
+                        value="#{web.text.CRYPTOTOKEN_FORTANIX_BASE_ADDRESS} " />
+                    <h:outputText id="currentCryptoTokenFortanixBaseAddress" value="#{web.ejbcaWebBean.getHelpReference('/Crypto_Tokens_Overview.html')}" escape="false"/>
+                </h:panelGroup>
+                <h:panelGroup
+                    rendered="#{cryptoTokenMBean.currentCryptoToken.showFortanixCryptoToken}">
+                    <h:inputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.fortanixBaseAddress}"
+                        rendered="#{cryptoTokenMBean.currentCryptoTokenEditMode}"
+                        disabled="#{!cryptoTokenMBean.allowedToModify}" />
+                    <h:outputText
+                        value="#{cryptoTokenMBean.currentCryptoToken.fortanixBaseAddress}"
+                        rendered="#{!cryptoTokenMBean.currentCryptoTokenEditMode}" />
+                </h:panelGroup>
+
                 <!-- Secret 1 -->
                 <h:panelGroup id="currentCryptoTokenSecret1LabelGroup">
                     <h:outputLabel 
@@ -721,21 +739,21 @@
 					action="#{cryptoTokenMBean.removeSelectedKeyPairs}"
 					rendered="#{!cryptoTokenMBean.keyPairGuiListEmpty &amp;&amp; cryptoTokenMBean.allowedToKeyRemoval}"
 					onclick="return confirm('#{web.text.CRYPTOTOKEN_KPM_CONF_REMS}')" />
-				<h:inputText value="#{cryptoTokenMBean.newKeyPairAlias}"
+				<h:inputText id="genNewKeyPairAlias" value="#{cryptoTokenMBean.newKeyPairAlias}"
 					rendered="#{cryptoTokenMBean.allowedToKeyGeneration}" size="30"
 					title="#{web.text.FORMAT_ALIAS}">
 					<f:validator validatorId="legalCharsValidator" />
 				</h:inputText>
-				<h:selectOneMenu value="#{cryptoTokenMBean.newKeyPairSpec}"
+				<h:selectOneMenu id="genNewKeyPairSpec" value="#{cryptoTokenMBean.newKeyPairSpec}"
 					rendered="#{cryptoTokenMBean.allowedToKeyGeneration}">
 					<f:selectItems value="#{cryptoTokenMBean.availableKeySpecs}" />
 				</h:selectOneMenu>
-				<h:selectOneMenu value="#{cryptoTokenMBean.keyUsage}" 
+				<h:selectOneMenu id="genNewKeyPairUsage" value="#{cryptoTokenMBean.keyUsage}" 
 					disabled="#{!cryptoTokenMBean.currentCryptoToken.canGenerateKey}"
 					rendered="#{cryptoTokenMBean.allowedToKeyGeneration and cryptoTokenMBean.currentCryptoToken.showP11NGCryptoToken}">
 					<f:selectItems value="#{cryptoTokenMBean.availableKeyUsages}"/>
 				</h:selectOneMenu>
-				<h:commandButton value="#{web.text.CRYPTOTOKEN_KPM_GENNEW}"
+				<h:commandButton id="genNewKeyPairButton" value="#{web.text.CRYPTOTOKEN_KPM_GENNEW}"
 					action="#{cryptoTokenMBean.generateNewKeyPair}"
 					disabled="#{!cryptoTokenMBean.currentCryptoToken.canGenerateKey}"
 					rendered="#{cryptoTokenMBean.allowedToKeyGeneration}" />

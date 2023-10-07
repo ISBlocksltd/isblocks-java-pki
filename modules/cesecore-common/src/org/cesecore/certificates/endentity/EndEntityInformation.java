@@ -24,12 +24,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.cesecore.certificates.certificate.ssh.SshEndEntityProfileFields;
 import org.cesecore.certificates.util.dn.DNFieldsUtil;
 import org.cesecore.util.Base64GetHashMap;
 import org.cesecore.util.Base64PutHashMap;
 import org.cesecore.util.SecureXMLDecoder;
-import org.cesecore.util.StringTools;
 import org.cesecore.util.XmlSerializer;
+
+import com.keyfactor.util.StringTools;
 
 
 /**
@@ -285,16 +287,46 @@ public class EndEntityInformation implements Serializable {
         setType(endEntityType);
     }
 
+    /**
+     * @deprecated Printing support was removed in 8.0.0
+     */
+    @Deprecated
     public boolean getPrintUserData(){
         return getType().contains(EndEntityTypes.PRINT);
     }
 
+    /**
+     * @deprecated Printing support was removed in 8.0.0
+     */
+    @Deprecated
     public void setPrintUserData(final boolean printUserData){
         final EndEntityType endEntityType = getType();
         if (printUserData) {
             endEntityType.addType(EndEntityTypes.PRINT);
         } else {
             endEntityType.removeType(EndEntityTypes.PRINT);
+        }
+        setType(endEntityType);
+    }
+    
+    public boolean isSshEndEntity(){
+        return getType().contains(EndEntityTypes.SSH);
+    }
+
+    public void setSshEndEntity(final boolean sshEndEntity){
+        final EndEntityType endEntityType = getType();
+        if (sshEndEntity) {
+            endEntityType.addType(EndEntityTypes.SSH);
+            if(extendedinformation==null) {
+                extendedinformation = new ExtendedInformation();
+            }
+            // sets to invalid value
+            extendedinformation.setSshCustomData(SshEndEntityProfileFields.SSH_CERTIFICATE_TYPE, 0);
+        } else {
+            endEntityType.removeType(EndEntityTypes.SSH);
+            if(extendedinformation!=null) {
+                extendedinformation.removeSshCustomData(SshEndEntityProfileFields.SSH_CERTIFICATE_TYPE);
+            }
         }
         setType(endEntityType);
     }

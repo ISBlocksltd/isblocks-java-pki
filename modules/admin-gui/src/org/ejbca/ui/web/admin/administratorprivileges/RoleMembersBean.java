@@ -25,11 +25,11 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.faces.application.FacesMessage;
-import javax.faces.bean.ManagedBean;
-import javax.faces.bean.ViewScoped;
 import javax.faces.context.FacesContext;
 import javax.faces.model.ListDataModel;
 import javax.faces.model.SelectItem;
+import javax.faces.view.ViewScoped;
+import javax.inject.Named;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -55,19 +55,20 @@ import org.cesecore.roles.management.RoleSessionLocal;
 import org.cesecore.roles.member.RoleMember;
 import org.cesecore.roles.member.RoleMemberDataSessionLocal;
 import org.cesecore.roles.member.RoleMemberSessionLocal;
-import org.cesecore.util.StringTools;
 import org.ejbca.config.WebConfiguration;
 import org.ejbca.core.ejb.approval.ApprovalProfileSessionLocal;
 import org.ejbca.core.ejb.approval.ApprovalSessionLocal;
 import org.ejbca.core.model.authorization.AccessRulesConstants;
 import org.ejbca.ui.web.admin.BaseManagedBean;
 
+import com.keyfactor.util.StringTools;
+
 /**
  * Managed Bean for the Role Member manage/view page.
  * 
  */
 @ViewScoped
-@ManagedBean
+@Named
 public class RoleMembersBean extends BaseManagedBean implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -462,11 +463,6 @@ public class RoleMembersBean extends BaseManagedBean implements Serializable {
                 final RoleMember roleMember = new RoleMember(tokenType, tokenIssuerId, tokenProviderId, tokenMatchKey,
                         accessMatchType.getNumericValue(), tokenMatchValue, role.getRoleId(), description);
                 roleMemberSession.persist(getAdmin(), roleMember);                
-                try {
-                    approvalSession.updateApprovalRights(getAdmin(), role.getRoleId(), role.getName());
-                } catch (AuthorizationDeniedException e) {
-                    log.warn("Approval rights were not updated for role '" + role.getName() + "' after adding the role member since the user lacked the required rights.");
-                }
             } catch (AuthorizationDeniedException e) {
                 super.addGlobalMessage(FacesMessage.SEVERITY_ERROR, "AUTHORIZATIONDENIED");
             }
@@ -522,11 +518,6 @@ public class RoleMembersBean extends BaseManagedBean implements Serializable {
         try {
             roleMemberSession.remove(getAdmin(), roleMemberToDelete.getId());
             super.addGlobalMessage(FacesMessage.SEVERITY_INFO, "ROLEMEMBERS_INFO_REMOVED");
-            try {
-                approvalSession.updateApprovalRights(getAdmin(), role.getRoleId(), role.getRoleName());
-            } catch (AuthorizationDeniedException e) {
-                log.warn("Approval rights were not updated for role '" + role.getName() + "' after removing a role member since the user lacked the required rights.");
-            }
             roleMembers = null;
             roleMemberToDelete = null;
             nonAjaxPostRedirectGet();

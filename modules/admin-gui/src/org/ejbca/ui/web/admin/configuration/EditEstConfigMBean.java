@@ -12,10 +12,23 @@
  *************************************************************************/
 package org.ejbca.ui.web.admin.configuration;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import javax.annotation.PostConstruct;
+import javax.ejb.EJB;
+import javax.faces.model.SelectItem;
+import javax.faces.view.ViewScoped;
+import javax.inject.Inject;
+import javax.inject.Named;
+
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.log4j.Logger;
 import org.cesecore.authentication.tokens.AuthenticationToken;
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.certificates.ca.CAInfo;
@@ -26,42 +39,39 @@ import org.ejbca.core.model.ra.UsernameGeneratorParams;
 import org.ejbca.ui.web.admin.BaseManagedBean;
 import org.ejbca.ui.web.jsf.configuration.EjbcaJSFHelper;
 
-import javax.annotation.PostConstruct;
-import javax.faces.bean.ManagedBean;
-import javax.faces.bean.ManagedProperty;
-import javax.faces.bean.ViewScoped;
-import javax.faces.model.SelectItem;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 /**
  * Backing bean for edit EST alias view.
  *
  */
-@ManagedBean
+@Named
 @ViewScoped
 public class EditEstConfigMBean extends BaseManagedBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private static final String HIDDEN_PWD = "**********";
 
+    // UniqueIdentifier is left out, because we don't want people to use that
     private static final List<String> dnfields = Arrays.asList("CN", "UID", "OU", "O", "L", "ST", "DC", "C", "emailAddress", "SN", "givenName", "initials", "surname", "title", 
             "unstructuredAddress", "unstructuredName", "postalCode", "businessCategory", "dnQualifier", "postalAddress", 
-            "telephoneNumber", "pseudonym", "streetAddress", "name", "role", "CIF", "NIF");
+            "telephoneNumber", "pseudonym", "streetAddress", "name", "role", "CIF", "NIF", "VID", "PID", "CertificationID");
 
     private String selectedRaNameSchemeDnPart;
 
-    @ManagedProperty(value = "#{estConfigMBean}")
+    @EJB
+    private CaSessionLocal caSession;
+
+    private TreeMap<Integer, String> caIdToNameMap;
+    private TreeMap<String, Integer> caNameToIdMap;
+
+    @Inject
     private EstConfigMBean estConfigMBean;
     EstAliasGui estAliasGui = null;
 
     @PostConstruct
     public void initialize() {
         getEjbcaWebBean().clearEstConfigClone();
+        caIdToNameMap = (TreeMap<Integer, String>) caSession.getAuthorizedCaIdsToNames(getAdmin());
+        caNameToIdMap = (TreeMap<String, Integer>) caSession.getAuthorizedCaNamesToIds(getAdmin());
     }
 
     public class EstAliasGui {
@@ -83,6 +93,7 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
         private String extDnPartPwdComponent;
         
         private boolean usesProxyCa;
+        private boolean serverKeyGenEnabled;
         
         
         public String getName() {
@@ -178,7 +189,7 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
         }
         
         public  String getSelectedVendorCa() {
-            return selectedVendorCa == null ? "" : selectedVendorCa;
+            return selectedVendorCa == null ? String.valueOf(getVendorCaSelectItems().get(0).getValue()) : selectedVendorCa;
         }
         
         public void setVendorCas(String vendorCas) {
@@ -264,9 +275,17 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
             this.usesProxyCa = usesProxyCa;
         }
         
+        public boolean isServerKeyGenEnabled() {
+            return serverKeyGenEnabled;
+        }
+
+        public void setServerKeyGenEnabled(boolean serverKeyGenEnabled) {
+            this.serverKeyGenEnabled = serverKeyGenEnabled;
+        }
+        
     }
 
-    public EstAliasGui getEstAlias() {
+    public EstAliasGui getEstAlias() throws NumberFormatException, AuthorizationDeniedException {
         if (estAliasGui == null) {
             EstAliasGui estAliasGui = new EstAliasGui();
             String aliasName = estConfigMBean.getSelectedAlias();
@@ -287,16 +306,26 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
             estAliasGui.setUserName(estConfiguration.getUsername(aliasName));
             estAliasGui.setPassword(EditEstConfigMBean.HIDDEN_PWD);
             estAliasGui.setAllowSameKey(estConfiguration.getKurAllowSameKey(aliasName));
+            estAliasGui.setServerKeyGenEnabled(estConfiguration.getServerKeyGenerationEnabled(aliasName));
             estAliasGui.setExtUsernameComponent(estConfiguration.getExtractUsernameComponent(aliasName));
             estAliasGui.setOperationMode(estConfiguration.getOperationMode(aliasName));
             estAliasGui.setVendorMode(estConfiguration.getVendorMode(aliasName));
-            estAliasGui.setSelectedVendorCa(estConfiguration.getVendorCAs(aliasName));
             estAliasGui.setAuthenticationModule(estConfiguration.getAuthenticationModule(aliasName));
             estAliasGui.setChallengePwdSelected(estConfiguration.getAuthenticationModule(aliasName).equals(EstConfiguration.CONFIG_AUTHMODULE_CHALLENGE_PWD));
             estAliasGui.setDnPartPwdSelected(estConfiguration.getAuthenticationModule(aliasName).equals(EstConfiguration.CONFIG_AUTHMODULE_DN_PART_PWD));
             estAliasGui.setExtDnPartPwdComponent(estConfiguration.getExtractDnPwdComponent(aliasName));
             estAliasGui.setAllowChangeSubjectName(estConfiguration.getAllowChangeSubjectName(aliasName));
-            estAliasGui.setVendorCas(estConfiguration.getVendorCAs(aliasName));
+            String vendorCaIds = estConfiguration.getVendorCaIds(aliasName);
+            ArrayList<String> vendorCaNames = new ArrayList<>();
+            if (!StringUtils.isEmpty(vendorCaIds)) {
+                for (String vendorCaId : vendorCaIds.split(";")) {
+                    String caName = caIdToNameMap.get(Integer.parseInt(vendorCaId));
+                    vendorCaNames.add(caName);
+                }
+                estAliasGui.setVendorCas(StringUtils.join(vendorCaNames, ";"));
+            } else {
+                estAliasGui.setVendorCas("");
+            }
             estAliasGui.setUsesProxyCa(estConfiguration.getSupportProxyCa(aliasName));
             this.estAliasGui = estAliasGui;
         }
@@ -322,15 +351,14 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
         return selectItems;
     }
     
-    public List<SelectItem> getCaItemList() {
+    public List<SelectItem> getCaItemList() throws NumberFormatException, AuthorizationDeniedException {
         final List<SelectItem> ret = new ArrayList<>();
         if (StringUtils.isEmpty(getEstAlias().getCaId())) {
             ret.add(new SelectItem("", EjbcaJSFHelper.getBean().getText().get("ESTDEFAULTCA_DISABLED")));
         }
-        Map<String, Integer> canames = getEjbcaWebBean().getCANames();
-        for (String caname : canames.keySet()) {
-            final Integer cadi = canames.get(caname);
-            ret.add(new SelectItem(cadi, caname));
+        for (String caname : caNameToIdMap.keySet()) {
+            final Integer caId = caNameToIdMap.get(caname);
+            ret.add(new SelectItem(caId, caname));
         }
         return ret;
     }
@@ -383,14 +411,25 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
             estConfiguration.setPassword(alias, estAliasGui.getPassword());
         }
         estConfiguration.setKurAllowSameKey(alias, estAliasGui.getAllowSameKey());
+        estConfiguration.setServerKeyGenerationEnabled(alias, estAliasGui.isServerKeyGenEnabled());
         estConfiguration.setExtractUsernameComponent(alias, estAliasGui.getExtUsernameComponent());
         estConfiguration.setExtractDnPwdComponent(alias, estAliasGui.getExtDnPartPwdComponent());
         estConfiguration.setOperationMode(alias, estAliasGui.getOperationMode());
         estConfiguration.setVendorMode(alias, estAliasGui.getVendorMode());
-        estConfiguration.setVendorCAs(alias, estAliasGui.getSelectedVendorCa());
         estConfiguration.setAuthenticationModule(alias, estAliasGui.getAuthenticationModule());
         estConfiguration.setAllowChangeSubjectName(alias, estAliasGui.getAllowChangeSubjectName());
-        estConfiguration.setVendorCAs(alias, getCurrentVendorCas());
+        final String currentVendorCas = getCurrentVendorCas();
+        if (StringUtils.isEmpty(currentVendorCas)) {
+            estConfiguration.setVendorCaIds(alias, "");
+        } else {
+            final String[] vendorCaNames = currentVendorCas.split(";");
+            final ArrayList<String> vendorCaIds = new ArrayList<>();
+            for (String vendorCaName : vendorCaNames) {
+                Integer caId = caNameToIdMap.get(vendorCaName.trim());
+                vendorCaIds.add(caId.toString());
+            }
+            estConfiguration.setVendorCaIds(alias, StringUtils.join(vendorCaIds, ";"));
+        }
         updateSupportProxyCa();
         estConfiguration.setSupportProxyCa(alias, estAliasGui.isUsesProxyCa());
         getEjbcaWebBean().updateEstConfigFromClone(alias);
@@ -403,7 +442,7 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
         final String currentVendorCas = getCurrentVendorCas();
         List<String> currentVendorCaList = new ArrayList<>();
         if (StringUtils.isNotBlank(currentVendorCas)) {
-            currentVendorCaList = new ArrayList<>(Arrays.asList( currentVendorCas.split(";"))); 
+            currentVendorCaList = new ArrayList<>(Arrays.asList(currentVendorCas.split(";"))); 
         }
         if (!currentVendorCaList.contains(estAliasGui.getSelectedVendorCa())) {
             currentVendorCaList.add(estAliasGui.getSelectedVendorCa());
@@ -415,7 +454,7 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
     public void actionRemoveVendorCa() {
         final String currentVendorCas = getCurrentVendorCas();
         if (StringUtils.isNotBlank(currentVendorCas)) {
-            final List<String> currentVendorCaList = new ArrayList<>(Arrays.asList( currentVendorCas.split(";")));
+            final List<String> currentVendorCaList = new ArrayList<>(Arrays.asList(currentVendorCas.split(";")));
             if (currentVendorCaList.remove(estAliasGui.getSelectedVendorCa())) {
                 setCurrentVendorCas(StringUtils.join(currentVendorCaList, ";"));
                 updateSupportProxyCa();
@@ -457,9 +496,8 @@ public class EditEstConfigMBean extends BaseManagedBean implements Serializable 
     
     public List<SelectItem> getVendorCaSelectItems() {
         final List<SelectItem> selectItems = new ArrayList<>();
-        final TreeMap<String, Integer> caOptions = getEjbcaWebBean().getCAOptions();
-        for (String ca : caOptions.keySet()) {
-            selectItems.add(new SelectItem(ca));
+        for (Integer caId : caIdToNameMap.keySet()) {
+            selectItems.add(new SelectItem(caIdToNameMap.get(caId)));
         }
         return selectItems;
     }

@@ -19,11 +19,12 @@ import org.cesecore.certificates.ca.CAInfo;
 import org.cesecore.certificates.ca.catoken.CAToken;
 import org.cesecore.certificates.ca.kfenroll.ProxyCaInfo;
 import org.cesecore.util.SimpleTime;
-import org.cesecore.util.StringTools;
-import org.ejbca.ui.web.admin.ca.EditCaUtil;
+
+import com.keyfactor.util.StringTools;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -33,7 +34,6 @@ public class CaInfoDto {
     
     private String caName;
     private String signatureAlgorithmParam = StringUtils.EMPTY;
-    private String signKeySpec = EditCaUtil.DEFAULT_KEY_SIZE;
     private int keySequenceFormat = StringTools.KEY_SEQUENCE_FORMAT_NUMERIC;
     private String keySequence = CAToken.DEFAULT_KEYSEQUENCE;
     private int caType = CAInfo.CATYPE_X509;
@@ -73,7 +73,6 @@ public class CaInfoDto {
     private boolean useCrlDistributiOnPointOnCrl;
     private boolean crlDistributionPointOnCrlCritical;
     private boolean includeInHealthCheck;
-    private boolean serviceCmsActive;
     private String sharedCmpRaSecret = StringUtils.EMPTY;
     private boolean keepExpiredOnCrl;
     private boolean usePartitionedCrl;
@@ -93,7 +92,10 @@ public class CaInfoDto {
     private String crlCaOverlapTime;
     private String crlCaDeltaCrlPeriod;
     private boolean generateCrlUponRevocation = false;
+    private boolean allowChangingRevocationReason = false;
+    private boolean allowInvalidityDate = false;
     private String requestPreProcessor;
+    private Map<String, List<String>> alternateCertificateChains;
     
     //cits
     private String certificateId;
@@ -171,20 +173,6 @@ public class CaInfoDto {
 
     public void setSignatureAlgorithmParam(String signatureAlgorithmParam) {
         this.signatureAlgorithmParam = signatureAlgorithmParam;
-    }
-
-    /** Key specification for extended CA services, used to generate the soft key used for i.e. the CMS Service 
-     * @return a key specification, for example 2048.
-     */
-    public String getSignKeySpec() {
-        return signKeySpec;
-    }
-
-    /** Key specification for extended CA services, used to generate the soft key used for i.e. the CMS Service 
-     * @param signKeySpec a key specification, for example 2048.
-     */
-    public void setSignKeySpec(String signKeySpec) {
-        this.signKeySpec = signKeySpec;
     }
 
     public int getKeySequenceFormat() {
@@ -504,14 +492,6 @@ public class CaInfoDto {
         this.includeInHealthCheck = includeInHealthCheck;
     }
 
-    public boolean isServiceCmsActive() {
-        return serviceCmsActive;
-    }
-
-    public void setServiceCmsActive(boolean serviceCmsActive) {
-        this.serviceCmsActive = serviceCmsActive;
-    }
-
     public String getSharedCmpRaSecret() {
         return sharedCmpRaSecret;
     }
@@ -664,12 +644,36 @@ public class CaInfoDto {
         generateCrlUponRevocation = generate;
     }
 
+    public boolean isAllowChangingRevocationReason() {
+        return allowChangingRevocationReason;
+    }
+
+    public void setAllowChangingRevocationReason(boolean allowChangingRevocationReason) {
+        this.allowChangingRevocationReason = allowChangingRevocationReason;
+    }
+
+    public boolean isAllowInvalidityDate() {
+        return allowInvalidityDate;
+    }
+
+    public void setAllowInvalidityDate(boolean allowInvalidityDate) {
+        this.allowInvalidityDate = allowInvalidityDate;
+    }
+
     public String getRequestPreProcessor() {
         return requestPreProcessor;
     }
 
     public void setRequestPreProcessor(String requestPreProcessor) {
         this.requestPreProcessor = requestPreProcessor;
+    }
+    
+    public Map<String, List<String>> getAlternateCertificateChains() {
+        return alternateCertificateChains;
+    }
+
+    public void setAlternateCertificateChains(Map<String, List<String>> alternateCertificateChains) {
+        this.alternateCertificateChains = alternateCertificateChains;
     }
 
     private void resetUseCrlPartitionsSettings() {

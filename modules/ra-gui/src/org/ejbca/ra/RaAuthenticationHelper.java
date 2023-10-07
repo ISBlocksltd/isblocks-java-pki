@@ -26,13 +26,16 @@ import org.bouncycastle.util.encoders.Hex;
 import org.cesecore.authentication.oauth.OAuthGrantResponseInfo;
 import org.cesecore.authentication.oauth.TokenExpiredException;
 import org.cesecore.authentication.tokens.AuthenticationToken;
+import org.cesecore.authentication.tokens.PublicAccessAuthenticationTokenMetaData;
+import org.cesecore.authentication.tokens.X509CertificateAuthenticationTokenMetaData;
 import org.cesecore.certificates.ca.CAInfo;
 import org.cesecore.config.OAuthConfiguration;
-import org.cesecore.util.CertTools;
 import org.ejbca.core.ejb.authentication.web.WebAuthenticationProviderSessionLocal;
 import org.ejbca.core.model.era.IdNameHashMap;
 import org.ejbca.core.model.era.RaMasterApiProxyBeanLocal;
 import org.ejbca.util.HttpTools;
+
+import com.keyfactor.util.CertTools;
 
 /**
  * Web session authentication helper.
@@ -94,7 +97,7 @@ public class RaAuthenticationHelper implements Serializable {
                     log.debug("RA client presented client TLS certificate with subject DN '" + CertTools.getSubjectDN(x509Certificate) + "'.");
                 }
                 // No need to perform re-authentication if the client certificate was the same
-                if (authenticationToken == null) {
+                if (authenticationToken == null || !authenticationToken.matchTokenType(X509CertificateAuthenticationTokenMetaData.TOKEN_TYPE)) {
                     authenticationToken = webAuthenticationProviderSession.authenticateUsingClientCertificate(x509Certificate);
                 }
                 if (!isAuthenticationTokenAccepted()) {
@@ -103,7 +106,8 @@ public class RaAuthenticationHelper implements Serializable {
                 }
                 x509AuthenticationTokenFingerprint = authenticationToken == null ? null : fingerprint;
             }
-            if (oauthBearerToken != null && authenticationToken == null) {
+            if (oauthBearerToken != null && (authenticationToken == null ||
+             authenticationToken.matchTokenType(PublicAccessAuthenticationTokenMetaData.TOKEN_TYPE))) {
                 final OAuthConfiguration oauthConfiguration = raMasterApi.getGlobalConfiguration(OAuthConfiguration.class);
                 try {
                     authenticationToken = webAuthenticationProviderSession.authenticateUsingOAuthBearerToken(oauthConfiguration, oauthBearerToken);
@@ -130,9 +134,7 @@ public class RaAuthenticationHelper implements Serializable {
                 }
             }
             if (authenticationToken == null) {
-                // Instead of checking httpServletRequest.isSecure() (connection deemed secure by container), we check if a TLS session is present
-                final boolean confidentialTransport = currentTlsSessionId != null;
-                authenticationToken = webAuthenticationProviderSession.authenticateUsingNothing(httpServletRequest.getRemoteAddr(), confidentialTransport);
+                authenticationToken = webAuthenticationProviderSession.authenticateUsingNothing(httpServletRequest.getRemoteAddr(), httpServletRequest.isSecure());
             }
         }
         resetUnwantedHttpHeaders(httpServletRequest, httpServletResponse);

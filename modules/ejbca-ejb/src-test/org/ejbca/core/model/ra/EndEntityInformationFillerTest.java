@@ -15,16 +15,21 @@ package org.ejbca.core.model.ra;
 import org.cesecore.certificates.endentity.EndEntityInformation;
 import org.cesecore.certificates.endentity.EndEntityType;
 import org.cesecore.certificates.endentity.EndEntityTypes;
-import org.cesecore.certificates.util.DnComponents;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfile;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfileValidationException;
 import org.ejbca.util.dn.DistinguishedName;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.keyfactor.util.certificate.DnComponents;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Tests DN merging
  * 
@@ -259,7 +264,7 @@ public class EndEntityInformationFillerTest {
 
     @Test
     public void testNoCn(){
-        String altName = EndEntityInformationFiller.copyDnsNameValueFromCn(profile, "");
+        String altName = EndEntityInformationFiller.copyCnToAltName(profile, "", DnComponents.DNSNAME);
         assertEquals("Alt name should be empty", "", altName);
     }
 
@@ -267,8 +272,40 @@ public class EndEntityInformationFillerTest {
     public void testOneDns(){
         profile.addField(DnComponents.DNSNAME);
         profile.setCopy(DnComponents.DNSNAME, 0, true);
-        String altName = EndEntityInformationFiller.copyDnsNameValueFromCn(profile, "CN=commonName");
+        String altName = EndEntityInformationFiller.copyCnToAltName(profile, "CN=commonName", DnComponents.DNSNAME);
         assertEquals("Alt name should contain DNSNAME copied from CN", "DNSNAME=commonName", altName);
+        profile.removeField(DnComponents.DNSNAME, 0);
+    }
+    
+    @Test
+    public void testOneUpn(){
+        profile.addField(DnComponents.UPN);
+        profile.setCopy(DnComponents.UPN, 0, true);
+        String altName = EndEntityInformationFiller.copyCnToAltName(profile, "CN=commonName", DnComponents.UPN);
+        assertEquals("Alt name should contain UPN copied from CN", "UPN=commonName", altName);
+        profile.removeField(DnComponents.UPN, 0);
+    }
+    
+    @Test
+    public void testOneUpnWithValue(){
+        profile.addField(DnComponents.UPN);
+        profile.setCopy(DnComponents.UPN, 0, true);
+        profile.setValue(DnComponents.UPN, 0, "abcd.com");
+        String altName = EndEntityInformationFiller.copyCnToAltName(profile, "CN=commonName", DnComponents.UPN);
+        assertEquals("Alt name should contain UPN copied from CN", "UPN=commonName@abcd.com", altName);
+        profile.removeField(DnComponents.UPN, 0);
+    }
+    
+    @Test
+    public void testOneUpnOneDnsNoneCopy(){
+        profile.addField(DnComponents.UPN);
+        profile.setCopy(DnComponents.UPN, 0, false);
+        profile.addField(DnComponents.DNSNAME);
+        profile.setCopy(DnComponents.DNSNAME, 0, false);
+        String altName = EndEntityInformationFiller.copyCnToAltName(profile, "CN=commonName", DnComponents.UPN);
+        altName = EndEntityInformationFiller.copyCnToAltName(profile, "CN=commonName", DnComponents.DNSNAME);
+        assertFalse("Alt name should contain DNSNAME copied from CN", altName.contains("DNSNAME=commonName"));
+        assertFalse("Alt name should contain UPN copied from CN", altName.contains("UPN=commonName"));
     }
     
     private void testCreateBigProfile() {
@@ -526,6 +563,9 @@ public class EndEntityInformationFillerTest {
         p.setValue(DnComponents.DNSNAME, 2, "server.bad.com");
         p.setValue(DnComponents.DNSNAME, 3, "server.superbad.com");
         
+        p.setUse(DnComponents.RFC822NAME,0,true);
+        p.setUse(DnComponents.RFC822NAME,1,true);
+        
         String san = "DNSNAME=foo.bar.com,DNSNAME=foo1.bar.com,RFC822NAME=foo@bar.com";
         EndEntityInformation user = new EndEntityInformation();
         user.setSubjectAltName(san);
@@ -659,6 +699,17 @@ public class EndEntityInformationFillerTest {
                                         EndEntityInformationFiller.SUBJECT_DN);
         assertEquals("CN=User Usersson,OU=Unit1,OU=Unit2,OU=Unit3,O=Org1,C=SE", dn2);
         
+    }
+    
+    @Test
+    public void testMergeDnForEmailInDistinguishedName() throws Exception {
+        Map<String, String> sdnMap = new HashMap<>();
+        sdnMap.put(DnComponents.DNEMAILADDRESS, "test@example.com");
+
+        String originalDn = "E=test@example.com,CN=example.com,OU=Wellcome Trust Sanger Institute,O=Genome Research Ltd.,L=ggdd,ST=STTsasad,C=GB";
+        String mergedDn = 
+                new DistinguishedName(originalDn).mergeDN(new DistinguishedName("CN=example.com"), true, sdnMap).toString();
+        assertEquals(originalDn, mergedDn);
     }
         
 }

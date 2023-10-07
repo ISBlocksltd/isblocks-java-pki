@@ -15,13 +15,14 @@ package org.cesecore.keys.token;
 import java.io.Serializable;
 import java.util.Properties;
 
-import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
 import org.cesecore.util.Named;
+
+import com.keyfactor.util.keys.token.CryptoToken;
+import com.keyfactor.util.keys.token.pkcs11.Pkcs11SlotLabelType;
 
 /**
  * Non-sensitive information about a CryptoToken.
  * 
- * @version $Id$
  */
 public class CryptoTokenInfo implements Named, Serializable {
 
@@ -110,9 +111,6 @@ public class CryptoTokenInfo implements Named, Serializable {
     public String getKeyVaultClientID() {
         return cryptoTokenProperties.getProperty(AzureCryptoToken.KEY_VAULT_CLIENTID);        
     }
-    public boolean isKeyVaultUseKeyBinding() {
-        return Boolean.parseBoolean(cryptoTokenProperties.getProperty(AzureCryptoToken.KEY_VAULT_USE_KEY_BINDING, "false"));        
-    }
     public String getKeyVaultKeyBinding() {
         return cryptoTokenProperties.getProperty(AzureCryptoToken.KEY_VAULT_KEY_BINDING);        
     }
@@ -153,6 +151,9 @@ public class CryptoTokenInfo implements Named, Serializable {
     }
     public Properties getCryptoTokenProperties() {
         return cryptoTokenProperties;
+    }
+    public String getFortanixBaseAddress() {
+        return cryptoTokenProperties.getProperty(CryptoTokenConstants.FORTANIX_BASE_ADDRESS);        
     }
 
     public AzureAuthenticationType getAzureAuthenticationType() {

@@ -115,11 +115,11 @@ body#menu {
 #navigation {
 	margin: 0em;
 	padding: .75em .75em .75em 1.25em;
+	box-sizing: content-box;
 	font-family: Verdana, Arial, Helvetica, Geneva, sans-serif;
 	font-size: 9pt;
 	font-weight: bold;
-	
-	width: 17em;
+	width: 18em;
 	float: left;
 }
 
@@ -213,8 +213,8 @@ body#header {
 	-webkit-text-shadow: .04em .04em 0em rgba(0,0,0,.1);
 }
 #header div#banner img {
-	max-height: 84px;
-	margin-top: 0px;
+	max-height: 60px;
+	margin: 10px;
 }
 #header div#banner span {
 	vertical-align: 5px;
@@ -446,13 +446,12 @@ table#addendentity .help {
 	font-size: .8em;
 }
 table .warning {
-	line-height: 1.40em;
-	white-space: normal;
-/*	font-size: .9em;	/* Smaller font size */
-	color: #E15E66;		/* Keep it, for old web browsers */
-	color: rgba(224,0,0,.6);
+    line-height: 1.40em;
+    white-space: normal;
+/*  font-size: .9em;    /* Smaller font size */
+    color: #E15E66;     /* Keep it, for old web browsers */
+    color: rgba(224,0,0,.6);
 }
-
 
 /* --- Forms: Grid */
 
@@ -1092,6 +1091,17 @@ table#config tr td:first-child {
 	vertical-align: top;
 }
 
+.protocolStatus {
+	white-space: nowrap;
+}
+
+.protocolStatus img {
+	width: 16px;
+	height: 16px;
+	border-width: 0;
+	margin: 0 0.2em 0.1em 0.2em;
+	vertical-align: middle;
+}
 
 /* --- Login page */
 .loginPage {
@@ -1415,6 +1425,10 @@ a.button:active {
 .card.prio-info { background-color: #b3ecff; }
 .card.prio-warn { background-color: #ffcc00; }
 .card.prio-error { background-color: #ff8566; }
+
+/* Set on document.documentElement */
+.waiting { cursor: wait; opacity: 0.5; }
+.waiting input { cursor: wait; }
 
 /*--------------------------------------------------------------------------*/
 /* EOF */

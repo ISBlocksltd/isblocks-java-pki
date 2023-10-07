@@ -55,7 +55,7 @@ import org.ejbca.ra.RaAuthenticationHelper;
  *
  */
 public class RaStyleRequestFilter implements Filter {
-    private final String RA_LOGO_PATH = "/ejbca/ra/img/pk_logo.png";
+    private final String RA_LOGO_PATH = "/ejbca/ra/img/EE/keyfactor-ejbca-logo.svg";
     private static Logger log = Logger.getLogger(RaStyleRequestFilter.class);
 
     @EJB
@@ -64,8 +64,6 @@ public class RaStyleRequestFilter implements Filter {
     private WebAuthenticationProviderSessionLocal webAuthenticationProviderSession;
     @EJB
     private RaMasterApiProxyBeanLocal raMasterApi;
-    
-    private RaAuthenticationHelper raAuthenticationHelper = null;
     
     @Override
     public void destroy() {
@@ -147,7 +145,7 @@ public class RaStyleRequestFilter implements Filter {
 
     /** @return the X509CertificateAuthenticationToken if the client has provided a certificate or a PublicAccessAuthenticationToken otherwise. */
     private AuthenticationToken getAuthenticationToken(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        raAuthenticationHelper = new RaAuthenticationHelper(webAuthenticationProviderSession, raMasterApi);
+        RaAuthenticationHelper raAuthenticationHelper = new RaAuthenticationHelper(webAuthenticationProviderSession, raMasterApi);
         return raAuthenticationHelper.getAuthenticationToken(httpRequest, httpResponse);
     }
     

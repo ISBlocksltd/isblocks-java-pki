@@ -48,14 +48,14 @@
 								value="#{web.text.EDITENDENTITYPROFILE}" 
 								rendered="#{not endEntityProfilesMBean.deleteInProgress}"/>
 						</h:column>
-						<h:column>
-							<h:commandButton 
-								id="exportButton" 
-								action="#{endEntityProfilesMBean.actionExportProfile}" 
-								value="#{web.text.EXPORTENDENTITYPROFILE}" 
-								rendered="#{not endEntityProfilesMBean.deleteInProgress}"/>
-						</h:column>
-						<h:column>
+                        <h:column>
+                            <h:commandButton 
+                                id="exportButton" 
+                                action="#{endEntityProfilesMBean.actionExportProfile}" 
+                                value="#{web.text.EXPORTENDENTITYPROFILE}" 
+                                rendered="#{not endEntityProfilesMBean.deleteInProgress}"/>
+                        </h:column>
+                        <h:column>
 				    		<h:commandButton 
 				    			id="deleteButton" 
 				    			action="#{endEntityProfilesMBean.actionDelete}" 

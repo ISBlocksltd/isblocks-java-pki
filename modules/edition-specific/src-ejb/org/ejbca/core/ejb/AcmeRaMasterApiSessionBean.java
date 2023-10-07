@@ -27,7 +27,6 @@ import org.cesecore.certificates.ca.CADoesntExistsException;
 import org.cesecore.certificates.ca.CAInfo;
 import org.cesecore.certificates.ca.IllegalNameException;
 import org.cesecore.certificates.certificate.CertificateDataWrapper;
-import org.cesecore.certificates.certificate.CertificateWrapper;
 import org.cesecore.certificates.certificate.exception.CertificateSerialNumberException;
 import org.cesecore.certificates.certificateprofile.CertificateProfile;
 import org.cesecore.certificates.endentity.EndEntityInformation;
@@ -50,6 +49,8 @@ import org.ejbca.core.protocol.acme.AcmeOrder;
 import org.ejbca.core.protocol.acme.AcmeProblemException;
 import org.ejbca.core.protocol.acme.AcmeRaMasterApiSessionLocal;
 
+import com.keyfactor.util.certificate.CertificateWrapper;
+
 /**
  * Proxy for identifying all calls that are needed in the RaMasterApi to fully support ACME.
  * 
@@ -60,7 +61,7 @@ import org.ejbca.core.protocol.acme.AcmeRaMasterApiSessionLocal;
 // We can't rely on transactions for calls that will do persistence over the RaMasterApi, so avoid the overhead of when methods are invoked
 @TransactionAttribute(TransactionAttributeType.SUPPORTS)
 public class AcmeRaMasterApiSessionBean implements AcmeRaMasterApiSessionLocal {
-    
+
     @Override
     public void revokeCert(AuthenticationToken authenticationToken, BigInteger certserno, Date revocationdate, String issuerdn, int reason,
             boolean checkDate) throws AuthorizationDeniedException, NoSuchEndEntityException, ApprovalException, WaitingForApprovalException,
@@ -205,6 +206,11 @@ public class AcmeRaMasterApiSessionBean implements AcmeRaMasterApiSessionLocal {
     }
 
     @Override
+    public boolean isAuthorizedNoLogging(AuthenticationToken authenticationToken, String... resources) {
+        throw new UnsupportedOperationException("ACME calls are only supported in EJBCA Enterprise");
+    }
+
+    @Override
     public EndEntityInformation searchUser(final AuthenticationToken authenticationToken, final String username) {
         throw new UnsupportedOperationException("ACME calls are only supported in EJBCA Enterprise");
     }
@@ -242,6 +248,11 @@ public class AcmeRaMasterApiSessionBean implements AcmeRaMasterApiSessionLocal {
 
     @Override
     public boolean isPeerAuthorizedAcme() {
+        throw new UnsupportedOperationException("ACME calls are only supported in EJBCA Enterprise");
+    }
+
+    @Override
+    public List<CertificateWrapper> searchForCertificateChain(AuthenticationToken authenticationToken, String fingerprint, String rootSubjectDnHash) {
         throw new UnsupportedOperationException("ACME calls are only supported in EJBCA Enterprise");
     }
 }

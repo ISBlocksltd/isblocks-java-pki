@@ -17,7 +17,6 @@ import java.util.Map;
 
 import org.cesecore.authentication.tokens.AuthenticationToken;
 import org.cesecore.authorization.AuthorizationDeniedException;
-import org.cesecore.roles.member.RoleMember;
 import org.ejbca.core.model.approval.profile.ApprovalProfile;
 
 /** Session bean to manage approval profiles, i.e. add, remove, find
@@ -140,15 +139,5 @@ public interface ApprovalProfileSession {
      * Forces the profile cache to rebuild. 
      */
     void forceProfileCacheRebuild();
-
-    /**
-     * Updates the approval and viewing rights associated with an Approval Profile
-     * 
-     * @param roleMembers role members of the role being used to update the rights of the profile
-     * @param approvalProfile the approval profile to update
-     * @param roleId the id of the role being used to update the rights of the profile
-     * @param roleName the name of the role being used to update the rights of the profile
-     */
-    Boolean updateApprovalProfileRightsByRoleId(List<RoleMember> roleMembers, ApprovalProfile approvalProfile, int roleId, String roleName);
 
 }

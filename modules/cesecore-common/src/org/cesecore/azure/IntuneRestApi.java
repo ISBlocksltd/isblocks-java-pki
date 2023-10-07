@@ -1,10 +1,13 @@
 /*************************************************************************
  *                                                                       *
- *  EJBCA - Proprietary Modules: Enterprise Certificate Authority        *
+ *  EJBCA Community: The OpenSource Certificate Authority                *
  *                                                                       *
- *  Copyright (c), PrimeKey Solutions AB. All rights reserved.           *
- *  The use of the Proprietary Modules are subject to specific           * 
- *  commercial license terms.                                            *
+ *  This software is free software; you can redistribute it and/or       *
+ *  modify it under the terms of the GNU Lesser General Public           *
+ *  License as published by the Free Software Foundation; either         *
+ *  version 2.1 of the License, or any later version.                    *
+ *                                                                       *
+ *  See terms of license at gnu.org.                                     *
  *                                                                       *
  *************************************************************************/
 package org.cesecore.azure;
@@ -48,7 +51,7 @@ public class IntuneRestApi {
 
     /**
      * Note that this Enum has the following license
-     * 
+     *
      * @formatter:off
      * Copyright (c) Microsoft Corporation.
      * All rights reserved.
@@ -190,12 +193,12 @@ public class IntuneRestApi {
 
     /**
      * It's expected that clients will use the Builder class to build this.
-     * 
+     *
      * @param azureCredentials object used to get a bearer token for Azure authentication
      * @param clientIdAndVersion a string passed to Azure for use in tracing and logging
      * @param client Client used to send HTTP requests to/from Azure
-     * @param graphResourceVersion 
-     * @param graphResourceUrl 
+     * @param graphResourceVersion
+     * @param graphResourceUrl
      */
     IntuneRestApi(final AzureAuthenticator azureCredentials, final String clientIdAndVersion, HttpClientWithProxySupport client,
             String graphResourceUrl, String graphResourceVersion, String intuneResourceUrl) {
@@ -293,9 +296,9 @@ public class IntuneRestApi {
      * Connect to Intune and download the revocation requests for this tenant.
      * @param maxRequests
      * @param issuerName May be null.  If specified, only return revocations for issuerName.  If null, return all requests for this tenant.
-     * 
+     *
      * @return List of revocation results to perform
-     * 
+     *
      * @throws IOException
      * @throws AzureException
      */
@@ -318,10 +321,10 @@ public class IntuneRestApi {
             final HttpPost request = client.getPost(uri);
             request.addHeader("Authorization", "Bearer " + lastToken.getToken());
             request.addHeader("client-request-id", getRequestId());
-            request.addHeader("content-type", "application/json");
+            request.addHeader("content-type", "application/json; charset=utf-8");
             request.addHeader("api-version", INTUNE_API_VERSION);
             request.addHeader("UserAgent", clientIdAndVersion);
-            request.setEntity(new StringEntity(downloadParametersString.toString()));
+            request.setEntity(new StringEntity(downloadParametersString.toString(), StandardCharsets.UTF_8));
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 logger.debug("Intune response:" + response.getStatusLine());
 
@@ -385,10 +388,10 @@ public class IntuneRestApi {
             final HttpPost request = client.getPost(uri);
             request.addHeader("Authorization", "Bearer " + lastToken.getToken());
             request.addHeader("client-request-id", getRequestId());
-            request.addHeader("content-type", "application/json");
+            request.addHeader("content-type", "application/json; charset=utf-8");
             request.addHeader("api-version", INTUNE_API_VERSION);
             request.addHeader("UserAgent", clientIdAndVersion);
-            request.setEntity(new StringEntity(jsonString));
+            request.setEntity(new StringEntity(jsonString, StandardCharsets.UTF_8));
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 logger.debug("Intune response:" + response.getStatusLine());
                 throwOnFailure(uri, response);
@@ -422,10 +425,10 @@ public class IntuneRestApi {
             final HttpPost request = client.getPost(uri);
             request.addHeader("Authorization", "Bearer " + lastToken.getToken());
             request.addHeader("client-request-id", getRequestId());
-            request.addHeader("content-type", "application/json");
+            request.addHeader("content-type", "application/json; charset=utf-8");
             request.addHeader("api-version", INTUNE_API_VERSION);
             request.addHeader("UserAgent", clientIdAndVersion);
-            request.setEntity(new StringEntity(jsonString.toString()));
+            request.setEntity(new StringEntity(jsonString.toString(), StandardCharsets.UTF_8));
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 logger.debug("Intune response:" + response.getStatusLine());
                 throwOnFailure(uri, response);
@@ -473,10 +476,10 @@ public class IntuneRestApi {
             final HttpPost request = client.getPost(uri);
             request.addHeader("Authorization", "Bearer " + lastToken.getToken());
             request.addHeader("client-request-id", getRequestId());
-            request.addHeader("content-type", "application/json");
+            request.addHeader("content-type", "application/json; charset=utf-8");
             request.addHeader("api-version", INTUNE_API_VERSION);
             request.addHeader("UserAgent", clientIdAndVersion);
-            request.setEntity(new StringEntity(jsonString.toString()));
+            request.setEntity(new StringEntity(jsonString.toString(), StandardCharsets.UTF_8));
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 logger.debug("Intune response:" + response.getStatusLine());
                 throwOnFailure(uri, response);
@@ -533,10 +536,10 @@ public class IntuneRestApi {
             final HttpPost request = client.getPost(uri);
             request.addHeader("Authorization", "Bearer " + lastToken.getToken());
             request.addHeader("client-request-id", getRequestId());
-            request.addHeader("content-type", "application/json");
+            request.addHeader("content-type", "application/json; charset=utf-8");
             request.addHeader("api-version", INTUNE_API_VERSION);
             request.addHeader("UserAgent", clientIdAndVersion);
-            request.setEntity(new StringEntity(jsonString.toString()));
+            request.setEntity(new StringEntity(jsonString.toString(), StandardCharsets.UTF_8));
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 logger.debug("Intune response:" + response.getStatusLine());
                 throwOnFailure(uri, response);
@@ -596,13 +599,13 @@ public class IntuneRestApi {
         private String intuneResourceUrl = DEFAULT_INTUNE_URL;
 
         /**
-         * Create a builder for constructing an IntuneRestApi.  These fields are always needed.  
-         * Note that clientIdAndVersion is just an informational string and in theory can be 
-         * used on the Azure side to trace operations. GlobalConfiguration.EJBCA_VERSION 
+         * Create a builder for constructing an IntuneRestApi.  These fields are always needed.
+         * Note that clientIdAndVersion is just an informational string and in theory can be
+         * used on the Azure side to trace operations. GlobalConfiguration.EJBCA_VERSION
          * is a reasonable value for it.
-         * 
+         *
          * @param tenantId azure tenant id
-         * @param applicationId id of Azure registered application 
+         * @param applicationId id of Azure registered application
          * @param clientIdAndVersion informational string for tracing operations
          */
         public Builder(String tenantId, String applicationId, String clientIdAndVersion) {

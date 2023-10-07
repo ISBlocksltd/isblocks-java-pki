@@ -13,12 +13,15 @@
 
 package org.ejbca.core.ejb.upgrade;
 
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -52,7 +55,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 
+
 import org.apache.commons.configuration2.Configuration;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
@@ -112,18 +117,15 @@ import org.cesecore.roles.management.RoleSessionLocal;
 import org.cesecore.roles.member.RoleMember;
 import org.cesecore.roles.member.RoleMemberDataSessionLocal;
 import org.cesecore.util.Base64GetHashMap;
-import org.cesecore.util.CertTools;
-import org.cesecore.util.CryptoProviderTools;
-import org.cesecore.util.FileTools;
 import org.cesecore.util.SecureXMLDecoder;
 import org.cesecore.util.SimpleTime;
-import org.cesecore.util.StringTools;
 import org.cesecore.util.ui.PropertyValidationException;
 import org.ejbca.config.AvailableProtocolsConfiguration;
 import org.ejbca.config.AvailableProtocolsConfiguration.AvailableProtocols;
 import org.ejbca.config.CmpConfiguration;
 import org.ejbca.config.DatabaseConfiguration;
 import org.ejbca.config.EjbcaConfiguration;
+import org.ejbca.config.EstConfiguration;
 import org.ejbca.config.GlobalConfiguration;
 import org.ejbca.config.InternalConfiguration;
 import org.ejbca.config.WebConfiguration;
@@ -153,6 +155,12 @@ import org.ejbca.core.model.ra.raadmin.EndEntityProfile;
 import org.ejbca.core.model.ra.raadmin.EndEntityProfileNotFoundException;
 import org.ejbca.util.JDBCUtil;
 
+
+import com.keyfactor.util.CertTools;
+import com.keyfactor.util.CryptoProviderTools;
+import com.keyfactor.util.FileTools;
+import com.keyfactor.util.StringTools;
+
 /**
  * The upgrade session bean is used to upgrade the database between EJBCA
  * releases.
@@ -163,6 +171,7 @@ import org.ejbca.util.JDBCUtil;
 public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRemote {
 
     private static final int PARTITIONED_CRLS_NORMALIZE_BATCH_SIZE = 1000;
+    private static final String MSSQL = "mssql";
 
     private static final Logger log = Logger.getLogger(UpgradeSessionBean.class);
 
@@ -356,7 +365,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
                 setCustomCertificateValidityWithSecondsGranularity(true);
                 // Since we know that this is a brand new installation, no upgrade should be needed
                 setLastUpgradedToVersion(InternalConfiguration.getAppVersionNumber());
-                setLastPostUpgradedToVersion("7.10.0");
+                setLastPostUpgradedToVersion("7.11.0");
             } else {
                 // Ensure that we save currently known oldest installation version before any upgrade is invoked
                 if(getLastUpgradedToVersion() != null) {
@@ -611,6 +620,20 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
             }
             setLastUpgradedToVersion("7.10.0");
         }
+        if (isLesserThan(oldVersion, "7.11.0")) {
+            try {
+                upgradeSession.migrateDatabase7110();
+            } catch (UpgradeFailedException e) {
+                return false;
+            }
+        }
+        if (isLesserThan(oldVersion, "8.0.0")) {
+            try {
+                upgradeSession.migrateDatabase800();
+            } catch (UpgradeFailedException e) {
+                return false;
+            }
+        }
         setLastUpgradedToVersion(InternalConfiguration.getAppVersionNumber());
         return true;
     }
@@ -670,6 +693,12 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
             }
             setLastPostUpgradedToVersion("7.10.0");
         }
+        if (isLesserThan(oldVersion, "7.11.0")) {
+            if (!postMigrateDatabase7110()) {
+                return false;
+            }
+            setLastPostUpgradedToVersion("7.11.0");
+        }
         
         // NOTE: If you add additional post upgrade tasks here, also modify isPostUpgradeNeeded() and performPreUpgrade()
         //setLastPostUpgradedToVersion(InternalConfiguration.getAppVersionNumber());
@@ -684,7 +713,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
     @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
     private boolean postMigrateDatabase781() {
         log.info("Starting post upgrade to 7.8.1");
-        List<Integer> ids;
+        List<?> ids;
         try {
             Query query = entityManager.createQuery("SELECT eepd.id FROM EndEntityProfileData eepd");
             ids = query.getResultList();
@@ -693,7 +722,8 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
             return false;
         }
 
-        for(Integer id: ids) {
+        for(Object idObject: ids) {
+            Integer id = (Integer) idObject;
             final String eepName = endEntityProfileSession.getEndEntityProfileName(id);
             try {
                 EndEntityProfile eep = endEntityProfileSession.getEndEntityProfile(id);
@@ -865,7 +895,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
     @TransactionAttribute(TransactionAttributeType.NOT_SUPPORTED)
     @Override
     public boolean isPostUpgradeNeeded() {
-        return isLesserThan(getLastPostUpgradedToVersion(), "7.10.0");
+        return isLesserThan(getLastPostUpgradedToVersion(), "7.11.0");
     }
 
     /**
@@ -1027,14 +1057,8 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
         Map<Integer, String> publisherNames = publisherSession.getPublisherIdToNameMap();
         BasePublisherConverter publisherFactory;
         try {
-            publisherFactory = (BasePublisherConverter) Class.forName("org.ejbca.va.publisher.EnterpriseValidationAuthorityPublisherFactoryImpl").newInstance();
-        } catch (InstantiationException e) {
-            //Shouldn't happen since we've already checked that we're running Enterprise
-            throw new IllegalStateException(e);
-        } catch (IllegalAccessException e) {
-            //Shouldn't happen since we've already checked that we're running Enterprise
-            throw new IllegalStateException(e);
-        } catch (ClassNotFoundException e) {
+            publisherFactory = (BasePublisherConverter) Class.forName("org.ejbca.va.publisher.EnterpriseValidationAuthorityPublisherFactoryImpl").getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
             //Shouldn't happen since we've already checked that we're running Enterprise
             throw new IllegalStateException(e);
         }
@@ -1500,6 +1524,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
      * Upgrade to EJBCA 6.10.1. 
      * Upgrading System configuration and certificate profiles with CT log label system
      */
+    @SuppressWarnings("deprecation")
     @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
     @Override
     public void migrateDatabase6101() throws UpgradeFailedException {
@@ -1710,6 +1735,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
      * setting was global previously, it should be fair to add each extension to every OCSP key binding.
      */
     private void importOcspExtensions() {
+        @SuppressWarnings("deprecation")
         final List<String> ocspExtensionOids = OcspConfiguration.getExtensionOids();
         if (ocspExtensionOids.isEmpty()) {
             log.debug("No OCSP extensions for import were found in ocsp.properties");
@@ -1737,7 +1763,9 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
         List<X509Certificate> trustedCerts = new ArrayList<>();
         Certificate cacert = null;
         boolean isUnidFnrEnabled = OcspConfiguration.isUnidEnabled();
+        @SuppressWarnings("deprecation")
         String trustDir = OcspConfiguration.getUnidTrustDir();
+        @SuppressWarnings("deprecation")
         String cacertfile = OcspConfiguration.getUnidCaCert();
         if (StringUtils.isEmpty(trustDir)) {
             // This installation is probably not using UnidFnr at all.
@@ -1854,23 +1882,30 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
 
             // Counting the number of non normal CRLData rows
             final Query query = entityManager.createQuery("SELECT count(*) FROM CRLData WHERE crlPartitionIndex IS NULL OR crlPartitionIndex = 0 ");
-            final long countOfRowsToBeNormalized = (long) query.getSingleResult();
+            final long countOfRowsToBeNormalized = (long) query.getSingleResult();            
             
             final long startDataNormalization = System.currentTimeMillis();
-
-            // Normalization is done in chunks in case number of rows are huge in CRLData table.
-            // This is to avoid the error "Got error 90 "Message too long" during COMMIT" in Galera clusters
-            // See ECA-10712 for more info.
-            for (int i = 0; i < countOfRowsToBeNormalized; i += PARTITIONED_CRLS_NORMALIZE_BATCH_SIZE) {
-                upgradeSession.fixPartitionedCrls(PARTITIONED_CRLS_NORMALIZE_BATCH_SIZE);
+            
+            // Check whether it is an MSSQL database. If yes, don't normalize in chunks
+            final String dbType = DatabaseConfiguration.getDatabaseName();
+            if (MSSQL.equals(dbType)) {
+                upgradeSession.fixPartitionedCrls(0, true);
+            } else {
+                // Normalization for non-MSSQL databases is done in chunks in case number of rows are huge in CRLData table.
+                // This is to avoid the error "Got error 90 "Message too long" during COMMIT" in Galera clusters
+                // See ECA-10712 for more info.
+                for (int i = 0; i < countOfRowsToBeNormalized; i += PARTITIONED_CRLS_NORMALIZE_BATCH_SIZE) {
+                    upgradeSession.fixPartitionedCrls(PARTITIONED_CRLS_NORMALIZE_BATCH_SIZE, false);
+                    
+                }
+                // Do fix the remaining if any
+                final Query normalizeData = entityManager.createQuery(
+                        "UPDATE CRLData a SET a.crlPartitionIndex = -1 WHERE a.crlPartitionIndex IS NULL OR a.crlPartitionIndex=0");
+                log.debug("Executing SQL query: " + normalizeData);
+                normalizeData.executeUpdate();
+                log.info("Successfully normalized " + countOfRowsToBeNormalized + " rows in CRLData. Completed in "
+                        + (System.currentTimeMillis() - startDataNormalization) + " ms.");
             }
-            // Do fix the remaining if any
-            final Query normalizeData = entityManager.createQuery(
-                    "UPDATE CRLData a SET a.crlPartitionIndex = -1 WHERE a.crlPartitionIndex IS NULL OR a.crlPartitionIndex=0");
-            log.debug("Executing SQL query: " + normalizeData);
-            normalizeData.executeUpdate();
-            log.info("Successfully normalized " + countOfRowsToBeNormalized + " rows in CRLData. Completed in "
-                    + (System.currentTimeMillis() - startDataNormalization) + " ms.");
             
             fixPartitionedCrlIndexes();
         } catch (AuthorizationDeniedException | UpgradeFailedException e) {
@@ -1878,7 +1913,38 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
             return false;
         }
         log.info("Post upgrade to 7.4.0 complete.");
+
         return true;  
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean postMigrateDatabase7110() {
+        log.info("Starting post upgrade to 7.11.0");
+        try {
+            // CMP
+            log.debug("Removing CMP vendor names that have been converted to the new ID format");
+            final CmpConfiguration cmpConfiguration =
+                    (CmpConfiguration) globalConfigurationSession.getCachedConfiguration(CmpConfiguration.CMP_CONFIGURATION_ID);
+            final LinkedHashMap<Object, Object> cmpRawData = cmpConfiguration.getRawData();
+            for (final String cmpAlias : cmpConfiguration.getAliasList()) {
+                cmpRawData.remove(cmpAlias + "." + CmpConfiguration.CONFIG_VENDORCA);
+            }
+            globalConfigurationSession.saveConfiguration(authenticationToken, cmpConfiguration);
+            // EST
+            log.debug("Removing EST vendor names that have been converted to the new ID format");
+            final EstConfiguration estConfiguration =
+                    (EstConfiguration) globalConfigurationSession.getCachedConfiguration(EstConfiguration.EST_CONFIGURATION_ID);
+            final LinkedHashMap<Object, Object> estRawData = estConfiguration.getRawData();
+            for (final String estAlias : estConfiguration.getAliasList()) {
+                estRawData.remove(estAlias + "." + EstConfiguration.CONFIG_VENDORCA);
+            }
+            globalConfigurationSession.saveConfiguration(authenticationToken, estConfiguration);
+        } catch (Exception e) {
+            log.error(e);
+            return false;
+        }
+        log.info("Post upgrade to 7.11.0 complete.");
+        return true;
     }
     
     private boolean postMigrateDatabase6101() {
@@ -2100,14 +2166,26 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
      */
     @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
     @Override
-    public void fixPartitionedCrls(final int limit) throws UpgradeFailedException {
-
+    public void fixPartitionedCrls(final int limit, final boolean isMSSQL) throws UpgradeFailedException {
         try {
-            final Query normalizeData = entityManager.createNativeQuery(
-                    "UPDATE CRLData a SET a.crlPartitionIndex = -1 WHERE a.crlPartitionIndex IS NULL OR a.crlPartitionIndex=0 LIMIT :limit");
-            normalizeData.setParameter("limit", limit);
-            log.debug("Executing SQL query: " + normalizeData);
-            normalizeData.executeUpdate();
+            // Do the whole normalization at once in the case of MSSQL
+            if (isMSSQL) {
+                final long startDataNormalization = System.currentTimeMillis();
+                final Query normalizeData = entityManager.createQuery(
+                        "UPDATE CRLData a SET a.crlPartitionIndex=-1 WHERE a.crlPartitionIndex IS NULL OR a.crlPartitionIndex=0");
+                log.debug("Executing SQL query: " + normalizeData);
+                final int rowCount = normalizeData.executeUpdate();
+                log.info("Successfully normalized " + rowCount + " rows in CRLData. Completed in "
+                        + (System.currentTimeMillis() - startDataNormalization) + " ms.");
+                // If not MSSQL normalize only a set amount at a time
+            } else {
+                final Query normalizeData = entityManager.createNativeQuery(
+                        "UPDATE CRLData a SET a.crlPartitionIndex = -1 WHERE a.crlPartitionIndex IS NULL OR a.crlPartitionIndex=0  LIMIT :limit");
+                normalizeData.setParameter("limit", limit);
+                log.debug("Executing SQL query: " + normalizeData);
+                normalizeData.executeUpdate();
+            }
+
         } catch (RuntimeException e) {
             log.error("An error occurred when updating data in database table 'CRLData': " + e);
             log.error("You can update the data manually using the following SQL query and then run the post-upgrade again.");
@@ -2321,6 +2399,7 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
             return !data.keySet().contains(FIELDBOUNDRARY);
         }
 
+        @SuppressWarnings("unchecked")
         static void update(EndEntityProfile eep) {
             LinkedHashMap<Object, Object> data = eep.getRawData();
             LinkedHashMap<Object, Object> upgradedData = new LinkedHashMap<>();
@@ -2397,6 +2476,95 @@ public class UpgradeSessionBean implements UpgradeSessionLocal, UpgradeSessionRe
         }
     }
 
+    @Override
+    public void migrateDatabase7110() throws UpgradeFailedException {
+        log.debug("migrateDatabase7110: Converting vendor CAs previously stored using names to use IDs instead");
+        final HashMap<Integer, String> caIdToNameMap = (HashMap<Integer, String>) caSession.getCAIdToNameMap();
+        // CMP
+        final CmpConfiguration cmpConfiguration =
+                (CmpConfiguration) globalConfigurationSession.getCachedConfiguration(CmpConfiguration.CMP_CONFIGURATION_ID);
+        for (final String cmpAlias : cmpConfiguration.getAliasList()) {
+            log.debug("Converting vendor CA list for CMP alias: " + cmpAlias);
+            @SuppressWarnings("deprecation")
+            final String cmpVendorCaNameString = cmpConfiguration.getValue(cmpAlias + "." + CmpConfiguration.CONFIG_VENDORCA, cmpAlias);
+            if (StringUtils.isEmpty(cmpVendorCaNameString)) {
+                continue;
+            }
+            final String[] cmpVendorCaNames = cmpVendorCaNameString.split(";");
+            final ArrayList<String> cmpVendorCaIds = new ArrayList<>();
+            for (String cmpVendorName : cmpVendorCaNames) {
+                boolean cmpVendorCaFound = false;
+                for (final Integer caId : caIdToNameMap.keySet()) {
+                    final String currentCmpVendorCaName = caIdToNameMap.get(caId);
+                    if (StringUtils.equals(cmpVendorName.trim(), currentCmpVendorCaName.trim())) {
+                        cmpVendorCaIds.add(caId.toString());
+                        cmpVendorCaFound = true;
+                        break;
+                    }
+                }
+                if (!cmpVendorCaFound) {
+                    log.debug("CMP vendor with name: " + cmpVendorName + " was not found, it will be removed");
+                }
+            }
+            cmpConfiguration.setVendorCaIds(cmpAlias, StringUtils.join(cmpVendorCaIds, ";"));
+        }
+        try {
+            globalConfigurationSession.saveConfiguration(authenticationToken, cmpConfiguration);
+        } catch (AuthorizationDeniedException e) {
+            log.error("Always allow token was denied authoriation to global configuration table.", e);
+        }
+        // EST
+        EstConfiguration estConfiguration =
+                (EstConfiguration) globalConfigurationSession.getCachedConfiguration(EstConfiguration.EST_CONFIGURATION_ID);
+        for (final String estAlias : estConfiguration.getAliasList()) {
+            log.debug("Converting vendor CA list for EST alias: " + estAlias);
+            @SuppressWarnings("deprecation")
+            final String estVendorCaNamesString = estConfiguration.getValue(estAlias + "." + EstConfiguration.CONFIG_VENDORCA, estAlias);
+            if (StringUtils.isEmpty(estVendorCaNamesString)) {
+                continue;
+            }
+            final String[] estVendorCaNames = estVendorCaNamesString.split(";");
+            final ArrayList<String> estVendorCaIds = new ArrayList<>();
+            for (String estVendorName : estVendorCaNames) {
+                boolean estVendorCaFound = false;
+                for (final Integer caId : caIdToNameMap.keySet()) {
+                    final String currentEstVendorCaName = caIdToNameMap.get(caId);
+                    if (StringUtils.equals(estVendorName.trim(), currentEstVendorCaName.trim())) {
+                        estVendorCaIds.add(caId.toString());
+                        estVendorCaFound = true;
+                        break;
+                    }
+                }
+                if (!estVendorCaFound) {
+                    log.debug("EST vendor with name: " + estVendorName + " was not found, it will be removed");
+                }
+            }
+            estConfiguration.setVendorCaIds(estAlias, StringUtils.join(estVendorCaIds, ";"));
+        }
+        try {
+            globalConfigurationSession.saveConfiguration(authenticationToken, estConfiguration);
+        } catch (AuthorizationDeniedException e) {
+            log.error("Always allow token was denied authoriation to global configuration table.", e);
+        }
+    }
+
+    @Override
+    public void migrateDatabase800() throws UpgradeFailedException {
+        log.debug(">migrateDatabase800");
+        // New extended key usage ECA-11201
+        final AvailableExtendedKeyUsagesConfiguration config =
+                (AvailableExtendedKeyUsagesConfiguration) globalConfigurationSession.getCachedConfiguration(AvailableExtendedKeyUsagesConfiguration.CONFIGURATION_ID);
+        if (!config.isExtendedKeyUsageSupported("1.3.6.1.5.5.7.3.36")) {
+            config.addExtKeyUsage("1.3.6.1.5.5.7.3.36", "EKU_DOCUMENT_SIGNING_RFC9336");
+        }
+        log.debug("Added RFC9336 Extended Key USage to availabe key usages list");
+        try {
+            globalConfigurationSession.saveConfiguration(authenticationToken, config);
+        } catch (AuthorizationDeniedException e) {
+            log.error("Always allow token was denied authoriation to global configuration table.", e);
+        }
+    }
+    
     /**
      * Checks if the column cAId column exists in AdminGroupData
      *

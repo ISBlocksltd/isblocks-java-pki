@@ -13,6 +13,7 @@
 
 package org.ejbca.core.model.ra.raadmin;
 
+import java.io.Serializable;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -20,9 +21,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.cesecore.CaTestUtils;
 import org.cesecore.RoleUsingTestCase;
@@ -43,23 +46,19 @@ import org.cesecore.certificates.endentity.EndEntityConstants;
 import org.cesecore.certificates.endentity.EndEntityInformation;
 import org.cesecore.certificates.endentity.EndEntityType;
 import org.cesecore.certificates.endentity.EndEntityTypes;
-import org.cesecore.certificates.util.AlgorithmConstants;
-import org.cesecore.certificates.util.DnComponents;
 import org.cesecore.keys.token.CryptoTokenManagementSessionRemote;
 import org.cesecore.keys.token.CryptoTokenTestUtils;
-import org.cesecore.keys.util.KeyTools;
 import org.cesecore.mock.authentication.tokens.TestAlwaysAllowLocalAuthenticationToken;
 import org.cesecore.roles.AccessRulesHelper;
 import org.cesecore.roles.Role;
 import org.cesecore.roles.management.RoleSessionRemote;
-import org.cesecore.util.CertTools;
-import org.cesecore.util.CryptoProviderTools;
 import org.cesecore.util.EjbRemoteHelper;
 import org.cesecore.util.SimpleTime;
 import org.ejbca.core.ejb.ca.caadmin.CAAdminSessionRemote;
 import org.ejbca.core.ejb.ra.raadmin.EndEntityProfileSessionRemote;
 import org.ejbca.core.model.SecConst;
 import org.ejbca.core.model.authorization.AccessRulesConstants;
+import org.ejbca.core.model.ra.raadmin.validators.RegexFieldValidator;
 import org.ejbca.util.passgen.PasswordGeneratorFactory;
 import org.junit.After;
 import org.junit.Before;
@@ -67,6 +66,12 @@ import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+
+import com.keyfactor.util.CertTools;
+import com.keyfactor.util.CryptoProviderTools;
+import com.keyfactor.util.certificate.DnComponents;
+import com.keyfactor.util.crypto.algorithm.AlgorithmConstants;
+import com.keyfactor.util.keys.KeyTools;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -317,8 +322,8 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
             
             // 1.2 Test 1 available CAs for this EEP
             // Create first CA.
-            cryptoTokenId1 = CryptoTokenTestUtils.createCryptoTokenForCA(alwaysAllowToken, "foo123".toCharArray(), caName1 + "_token", "1024");
-            catoken1 = CaTestUtils.createCaToken(cryptoTokenId1, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, AlgorithmConstants.SIGALG_SHA1_WITH_RSA);
+            cryptoTokenId1 = CryptoTokenTestUtils.createCryptoTokenForCA(alwaysAllowToken, "foo123".toCharArray(), caName1 + "_token", "1024", "1024", CAToken.SOFTPRIVATESIGNKEYALIAS, CAToken.SOFTPRIVATEDECKEYALIAS);
+            catoken1 = CaTestUtils.createCaToken(cryptoTokenId1, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, CAToken.SOFTPRIVATESIGNKEYALIAS, CAToken.SOFTPRIVATEDECKEYALIAS);
             caInfo1 = getNewCAInfo(caName1, catoken1);
             caAdminSession.createCA(alwaysAllowToken, caInfo1);
             eeProfile.setAvailableCAs(Collections.singletonList(caInfo1.getCAId()));
@@ -329,8 +334,8 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
                         
             // 1.3 Test 2 available CAs for this EEP.
             // Create second CA.
-            cryptoTokenId2 = CryptoTokenTestUtils.createCryptoTokenForCA(alwaysAllowToken, "foo123".toCharArray(), caName2 + "_token", "1024");
-            catoken2 = CaTestUtils.createCaToken(cryptoTokenId2, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, AlgorithmConstants.SIGALG_SHA1_WITH_RSA);
+            cryptoTokenId2 = CryptoTokenTestUtils.createCryptoTokenForCA(alwaysAllowToken, "foo123".toCharArray(), caName2 + "_token", "1024", "1024", CAToken.SOFTPRIVATESIGNKEYALIAS, CAToken.SOFTPRIVATEDECKEYALIAS);
+            catoken2 = CaTestUtils.createCaToken(cryptoTokenId2, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, AlgorithmConstants.SIGALG_SHA1_WITH_RSA, CAToken.SOFTPRIVATESIGNKEYALIAS, CAToken.SOFTPRIVATEDECKEYALIAS);
             caInfo2 = getNewCAInfo(caName2, catoken2);
             caAdminSession.createCA(alwaysAllowToken, caInfo2);
             eeProfile.setAvailableCAs(Arrays.asList(caInfo1.getCAId(), caInfo2.getCAId()));
@@ -394,6 +399,12 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
         return cainfo;
     }
     
+    private LinkedHashMap<String, Serializable> validationFromRegex(final String regex) {
+        final LinkedHashMap<String, Serializable> validation = new LinkedHashMap<>();
+        validation.put(RegexFieldValidator.class.getName(), StringUtils.defaultString(regex));
+        return validation;
+    }
+    
     /**
      * Test if dynamic fields behave as expected
      * 
@@ -406,6 +417,8 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
         String testProfileName = "TESTDYNAMICFIELDS";
         String testString1 = "testString1";
         String testString2 = "testString2";
+        String validatorString1 = "(Abc111)?[1-9]+";
+        String validatorString2 = "(Xyz222)?[1-9]+";
         boolean returnValue;
         // Create testprofile
         EndEntityProfile profile = new EndEntityProfile();
@@ -416,10 +429,14 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
         profile.addField(DnComponents.ORGANIZATIONALUNIT);
         profile.setValue(DnComponents.ORGANIZATIONALUNIT, 0, testString1);
         profile.setValue(DnComponents.ORGANIZATIONALUNIT, 1, testString2);
+        profile.setValidation(DnComponents.ORGANIZATIONALUNIT, 0, validationFromRegex(validatorString1));
+        profile.setValidation(DnComponents.ORGANIZATIONALUNIT, 1, validationFromRegex(validatorString2));
         profile.addField(DnComponents.DNSNAME);
         profile.addField(DnComponents.DNSNAME);
         profile.setValue(DnComponents.DNSNAME, 0, testString1);
         profile.setValue(DnComponents.DNSNAME, 1, testString2);
+        profile.setValidation(DnComponents.DNSNAME, 0, validationFromRegex(validatorString1));
+        profile.setValidation(DnComponents.DNSNAME, 1, validationFromRegex(validatorString2));
         endEntityProfileSession.changeEndEntityProfile(roleMgmgToken, testProfileName, profile);
         // Remove first field
         profile = endEntityProfileSession.getEndEntityProfile(testProfileName);
@@ -431,6 +448,9 @@ public class EndEntityProfileSessionBeanTest extends RoleUsingTestCase {
         returnValue = testString2.equals(profile.getValue(DnComponents.ORGANIZATIONALUNIT, 0));
         returnValue &= testString2.equals(profile.getValue(DnComponents.DNSNAME, 0));
         assertTrue("Adding and removing dynamic fields to profile does not work properly.", returnValue);
+        returnValue = profile.getValidation(DnComponents.ORGANIZATIONALUNIT, 0).containsValue(validatorString2);
+        returnValue = profile.getValidation(DnComponents.DNSNAME, 0).containsValue(validatorString2);
+        assertTrue("Adding and removing validators dynamic fields to profile does not work properly.", returnValue);
         // Remove profile
         endEntityProfileSession.removeEndEntityProfile(roleMgmgToken, testProfileName);
         log.trace("<test08EndEntityProfilesDynamicFields()");

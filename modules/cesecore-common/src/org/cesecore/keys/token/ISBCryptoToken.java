@@ -12,6 +12,13 @@
  *************************************************************************/
 package org.cesecore.keys.token;
 
+import com.keyfactor.util.keys.KeyTools;
+import com.keyfactor.util.keys.token.BaseCryptoToken;
+import com.keyfactor.util.keys.token.CryptoTokenAuthenticationFailedException;
+import com.keyfactor.util.keys.token.CryptoTokenOfflineException;
+import com.keyfactor.util.keys.token.KeyGenParams;
+import com.keyfactor.util.keys.token.pkcs11.NoSuchSlotException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -77,8 +84,8 @@ import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECPublicKeySpec;
 import org.cesecore.internal.InternalResources;
-import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
-import org.cesecore.keys.util.KeyTools;
+//import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
+//import org.cesecore.keys.util.KeyTools;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -600,7 +607,7 @@ public class ISBCryptoToken extends BaseCryptoToken {
             str.append("\",\"attributes\":{");
             str.append("\"label\":").append("\"").append(alias).append("\",");
             str.append("\"subjectDN\":").append("\"CN=").append(alias).append("\",");
-            final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumericIfRsa(keySpec);
+            final String formatCheckedKeySpec = KeyGenParams.getKeySpecificationNumeric(keySpec);
             // If it is pure numeric, it is an RSA key length
             if (NumberUtils.isNumber(formatCheckedKeySpec)) {
                 algorithm = "RSA" + keySpec;

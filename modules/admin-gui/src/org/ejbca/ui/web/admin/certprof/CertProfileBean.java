@@ -35,24 +35,29 @@ import org.cesecore.certificates.certificateprofile.CertificateProfileConstants;
 import org.cesecore.certificates.certificateprofile.PKIDisclosureStatement;
 import org.cesecore.certificates.certificatetransparency.CTLogInfo;
 import org.cesecore.certificates.certificatetransparency.CertificateTransparencyFactory;
-import org.cesecore.certificates.util.AlgorithmConstants;
-import org.cesecore.certificates.util.AlgorithmTools;
 import org.cesecore.certificates.util.DNFieldExtractor;
-import org.cesecore.certificates.util.DnComponents;
 import org.cesecore.config.AvailableExtendedKeyUsagesConfiguration;
 import org.cesecore.util.SimpleTime;
-import org.cesecore.util.StringTools;
 import org.cesecore.util.ValidityDate;
 import org.ejbca.config.GlobalConfiguration;
+import org.ejbca.config.WebConfiguration;
 import org.ejbca.core.model.authorization.AccessRulesConstants;
 import org.ejbca.cvc.AccessRightAuthTerm;
 import org.ejbca.ui.web.admin.BaseManagedBean;
 import org.ejbca.ui.web.jsf.configuration.EjbcaJSFHelper;
 
+import com.keyfactor.util.StringTools;
+import com.keyfactor.util.certificate.DnComponents;
+import com.keyfactor.util.crypto.algorithm.AlgorithmConstants;
+import com.keyfactor.util.crypto.algorithm.AlgorithmTools;
+
 import javax.annotation.PostConstruct;
 import javax.faces.context.FacesContext;
 import javax.faces.model.ListDataModel;
 import javax.faces.model.SelectItem;
+import javax.faces.view.ViewScoped;
+import javax.inject.Named;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.text.ParseException;
@@ -75,9 +80,8 @@ import java.util.TreeSet;
  * JSF MBean backing the certificate profile pages.
  *
  */
-// Declarations in faces-config.xml
-//@javax.faces.bean.ViewScoped
-//@javax.faces.bean.ManagedBean(name="certProfileBean")
+@Named("certProfileBean")
+@ViewScoped
 public class CertProfileBean extends BaseManagedBean implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final Logger log = Logger.getLogger(CertProfileBean.class);
@@ -398,13 +402,17 @@ public class CertProfileBean extends BaseManagedBean implements Serializable {
     public List<SelectItem> getAvailableKeyAlgorithmsAvailable() {
         final List<SelectItem> ret = new ArrayList<>();
         for (final String current : AlgorithmTools.getAvailableKeyAlgorithms()) {
-            ret.add(new SelectItem(current));
+            if (!WebConfiguration.isPQCEnabled() && AlgorithmTools.isPQC(current)) {
+                // Don't show this algorithm in the UI
+            } else {
+                ret.add(new SelectItem(current));
+            }
         }
         return ret;
     }
 
     public int getAvailableKeyAlgorithmsSize() {
-        return AlgorithmTools.getAvailableKeyAlgorithms().size();
+        return getAvailableKeyAlgorithmsAvailable().size();
     }
 
     // SelectItem<String,String>
@@ -446,6 +454,9 @@ public class CertProfileBean extends BaseManagedBean implements Serializable {
         }
         if(certificateProfile.getAvailableKeyAlgorithmsAsList().contains(AlgorithmConstants.KEYALGORITHM_DSTU4145)) {
             availableBitLengths.addAll(AlgorithmTools.DEFAULTBITLENGTHS_DSTU);
+        }
+        if(certificateProfile.getAvailableKeyAlgorithmsAsList().contains(AlgorithmConstants.KEYALGORITHM_NTRU)) {
+            availableBitLengths.addAll(AlgorithmTools.DEFAULTBITLENGTHS_NTRU);
         }
         final List<SelectItem> ret = new ArrayList<>();
         if (availableBitLengths.size() > 0 && certificateProfile.isKeyAlgorithmsRequireKeySizes()) {
@@ -644,6 +655,8 @@ public class CertProfileBean extends BaseManagedBean implements Serializable {
         getCertificateProfile().setUseKeyUsage(!getCertificateProfile().getUseKeyUsage());
     }
 
+    public boolean isKeyUsageForbidEncryptionUsageForECC() { return getCertificateProfile().getKeyUsageForbidEncryptionUsageForECC(); }
+
     public boolean isKeyUsageDigitalSignature() { return getCertificateProfile().getKeyUsage(CertificateConstants.DIGITALSIGNATURE); }
 
     public boolean isKeyUsageNonRepudiation() { return getCertificateProfile().getKeyUsage(CertificateConstants.NONREPUDIATION); }
@@ -679,6 +692,8 @@ public class CertProfileBean extends BaseManagedBean implements Serializable {
     public void setKeyUsageEncipherOnly(final boolean enabled) { getCertificateProfile().setKeyUsage(CertificateConstants.ENCIPHERONLY, enabled); }
 
     public void setKeyUsageDecipherOnly(final boolean enabled) { getCertificateProfile().setKeyUsage(CertificateConstants.DECIPHERONLY, enabled); }
+
+    public void setKeyUsageForbidEncryptionUsageForECC(final boolean enabled) { getCertificateProfile().setKeyUsageForbidEncryptionUsageForECC(enabled); }
 
     public boolean isNonOverridableExtensionOIDs() { return !getCertificateProfile().getNonOverridableExtensionOIDs().isEmpty(); }
 

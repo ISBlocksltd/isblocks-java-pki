@@ -38,20 +38,22 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.enterprise.context.SessionScoped;
 import javax.faces.application.FacesMessage;
-import javax.faces.bean.ManagedBean;
-import javax.faces.bean.SessionScoped;
+import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
 import javax.faces.event.ComponentSystemEvent;
 import javax.faces.model.ListDataModel;
 import javax.faces.model.SelectItem;
+import javax.inject.Named;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Part;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.apache.myfaces.custom.fileupload.UploadedFile;
 import org.cesecore.authentication.oauth.OAuthKeyInfo;
 import org.cesecore.authentication.tokens.OAuth2AuthenticationToken;
 import org.cesecore.authorization.AuthorizationDeniedException;
@@ -78,13 +80,10 @@ import org.cesecore.keybind.InternalKeyBindingStatus;
 import org.cesecore.keybind.impl.AuthenticationKeyBinding;
 import org.cesecore.keys.token.CryptoTokenInfo;
 import org.cesecore.keys.token.CryptoTokenManagementSessionLocal;
-import org.cesecore.keys.token.CryptoTokenOfflineException;
 import org.cesecore.roles.AccessRulesHelper;
 import org.cesecore.roles.Role;
 import org.cesecore.roles.management.RoleDataSessionLocal;
-import org.cesecore.util.FileTools;
 import org.cesecore.util.SecureZipUnpacker;
-import org.cesecore.util.StreamSizeLimitExceededException;
 import org.ejbca.config.AvailableProtocolsConfiguration;
 import org.ejbca.config.AvailableProtocolsConfiguration.AvailableProtocols;
 import org.ejbca.config.GlobalConfiguration;
@@ -107,14 +106,20 @@ import org.ejbca.statedump.ejb.StatedumpSessionLocal;
 import org.ejbca.ui.web.admin.BaseManagedBean;
 import org.ejbca.ui.web.configuration.WebLanguage;
 import org.ejbca.ui.web.configuration.exception.CacheClearException;
+import org.primefaces.component.tabview.Tab;
+import org.primefaces.component.tabview.TabView;
+import org.primefaces.event.TabChangeEvent;
 
+import com.keyfactor.util.FileTools;
+import com.keyfactor.util.StreamSizeLimitExceededException;
+import com.keyfactor.util.keys.token.CryptoTokenOfflineException;
 import com.nimbusds.jwt.SignedJWT;
 
 /**
  * Backing bean for the various system configuration pages.
  *
  */
-@ManagedBean
+@Named
 @SessionScoped
 public class SystemConfigMBean extends BaseManagedBean implements Serializable {
 
@@ -141,7 +146,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         private boolean publicWebCertChainOrderRootFirst;
         private boolean enableSessionTimeout;
         private int sessionTimeoutTime;
-        private boolean hidePublicWeb;
         private int vaStatusTimeConstraint;
 
         // Settings for the cleanup job for removing old OCSP responses created by the presigners.
@@ -180,7 +184,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
                 this.publicWebCertChainOrderRootFirst = globalConfig.getPublicWebCertChainOrderRootFirst();
                 this.enableSessionTimeout = globalConfig.getUseSessionTimeout();
                 this.sessionTimeoutTime = globalConfig.getSessionTimeoutTime();
-                this.hidePublicWeb = globalConfig.getHidePublicWeb();
                 this.vaStatusTimeConstraint = globalConfig.getVaStatusTimeConstraint();
                 this.setEnableIcaoCANameChange(globalConfig.getEnableIcaoCANameChange());
                 this.ctLogs = new ArrayList<>(globalConfig.getCTLogs().values());
@@ -236,8 +239,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         public void setPublicWebCertChainOrderRootFirst(boolean publicWebCertChainOrderRootFirst) { this.publicWebCertChainOrderRootFirst=publicWebCertChainOrderRootFirst; }
         public boolean isEnableSessionTimeout() { return enableSessionTimeout; }
         public void setEnableSessionTimeout(boolean enableSessionTimeout) { this.enableSessionTimeout = enableSessionTimeout;}
-        public boolean getHidePublicWeb() { return this.hidePublicWeb; }
-        public void setHidePublicWeb(final boolean hidePublicWeb) { this.hidePublicWeb = hidePublicWeb; }
         public int getSessionTimeoutTime() {return sessionTimeoutTime;}
         public void setSessionTimeoutTime(int sessionTimeoutTime) {this.sessionTimeoutTime = sessionTimeoutTime;}
         public int getVaStatusTimeConstraint() { return vaStatusTimeConstraint; }
@@ -313,7 +314,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         public String getEncoding() { return this.encoding; }
     }
 
-    private String selectedTab = null;
     private GlobalConfiguration globalConfig = null;
     private GlobalCesecoreConfiguration globalCesecoreConfiguration = null;
     private OAuthConfiguration oAuthConfiguration = null;
@@ -326,7 +326,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
     private String currentNode = null;
     private boolean excludeActiveCryptoTokensFromClearCaches = true;
     private boolean customCertificateExtensionViewMode = false;
-    private UploadedFile statedumpFile = null;
+    private Part statedumpFile = null;
     private String statedumpDir = null;
     private boolean statedumpLockdownAfterImport = false;
     private SystemConfigurationOAuthKeyManager oauthKeyManager;
@@ -335,6 +335,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
     private GoogleCtPolicy googleCtPolicy;
     private boolean incompleteIssuanceServiceCheckDone = false;
     private boolean incompleteIssuanceServiceAvailable;
+    private int lastActiveTab = 0;
 
     private final CaSessionLocal caSession = getEjbcaWebBean().getEjb().getCaSession();
     private final CertificateProfileSessionLocal certificateProfileSession = getEjbcaWebBean().getEjb().getCertificateProfileSession();
@@ -347,6 +348,37 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
     private final InternalKeyBindingMgmtSessionLocal internalKeyBindingMgmtSession = getEjbcaWebBean().getEjb().getInternalKeyBindingMgmtSession();
     private final ServiceSessionLocal serviceSession = new EjbLocalHelper().getServiceSession();
 
+    private boolean enableCustomHeaderRest;
+    private String customHeaderRestName;
+
+    public int getLastActiveTab() {
+        return lastActiveTab;
+    }
+
+    public void setLastActiveTab(final int lastActiveTab) {
+        this.lastActiveTab = lastActiveTab;
+    }
+
+    public void onTabChange(final TabChangeEvent<?> event) {
+        final Tab activeTab = event.getTab();
+        if (activeTab == null) {
+            return;
+        }
+        final TabView tabView = (TabView) activeTab.getParent();
+        // There is tabView.getTabIndex(), but it just calls
+        // SystemConfigMBean.getLastActiveTab(), so it can't be used.
+        int tabIndex = 0;
+        for (final UIComponent tab : tabView.getChildren()) {
+            if (!tab.isRendered()) {
+                continue;
+            }
+            if (tab == activeTab) {
+                setLastActiveTab(tabIndex);
+                break;
+            }
+            tabIndex++;
+        }
+    }
 
     public void authorizeViewCt(ComponentSystemEvent event) throws Exception {
         if (!FacesContext.getCurrentInstance().isPostback()) {
@@ -673,22 +705,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         return validatorSettings;
     }
 
-    public String getSelectedTab() {
-        final String tabHttpParam = ((HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest()).getParameter("tab");
-        // First, check if the user has requested a valid tab
-        List<String> availableTabs = getAvailableTabs();
-        if (tabHttpParam != null && availableTabs.contains(tabHttpParam)) {
-            // The requested tab is an existing tab. Flush caches so we reload the page content
-            flushCache();
-            selectedTab = tabHttpParam;
-        }
-        if (selectedTab == null) {
-            // If no tab was requested, we use the first available tab as default
-            selectedTab = availableTabs.get(0);
-        }
-        return selectedTab;
-    }
-
     public String getCurrentNode() {
         return this.currentNode;
     }
@@ -730,11 +746,11 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         this.statedumpDir = statedumpDir;
     }
 
-    public UploadedFile getStatedumpFile() {
+    public Part getStatedumpFile() {
         return statedumpFile;
     }
 
-    public void setStatedumpFile(final UploadedFile statedumpFile) {
+    public void setStatedumpFile(final Part statedumpFile) {
         this.statedumpFile = statedumpFile;
     }
 
@@ -919,7 +935,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
                 importStatedump(new File(basedir, statedumpDir), statedumpLockdownAfterImport);
                 super.addNonTranslatedErrorMessage("Statedump imported successfully.");
             } else {
-                byte[] uploadedFileBytes = statedumpFile.getBytes();
+                byte[] uploadedFileBytes =  IOUtils.toByteArray(statedumpFile.getInputStream(), statedumpFile.getSize());      
                 importStatedump(uploadedFileBytes, statedumpLockdownAfterImport);
                 // This value is only used to cross-check the imported statedump against a key ceremony script, to prevent
                 // the wrong statedump from being imported by accident. It has nothing to do with security.
@@ -997,7 +1013,6 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
                 globalConfig.setEnableExternalScripts(currentConfig.getEnableExternalScripts());
                 globalConfig.setPublicWebCertChainOrderRootFirst(currentConfig.getPublicWebCertChainOrderRootFirst());
                 globalConfig.setUseSessionTimeout(currentConfig.isEnableSessionTimeout());
-                globalConfig.setHidePublicWeb(currentConfig.getHidePublicWeb());
                 globalConfig.setSessionTimeoutTime(currentConfig.getSessionTimeoutTime());
                 globalConfig.setVaStatusTimeConstraint(currentConfig.getVaStatusTimeConstraint());
                 globalConfig.setEnableIcaoCANameChange(currentConfig.getEnableIcaoCANameChange());
@@ -1105,6 +1120,8 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         googleCtPolicy = null;
         validatorSettings = null;
         incompleteIssuanceServiceCheckDone = false;
+        enableCustomHeaderRest = getAvailableProtocolsConfiguration().isCustomHeaderForRestEnabled();
+        customHeaderRestName = getAvailableProtocolsConfiguration().getCustomHeaderForRest();
     }
 
     public void toggleEnableKeyRecovery() { getCurrentConfig().setEnableKeyRecovery(!getCurrentConfig().getEnableKeyRecovery()); }
@@ -1332,6 +1349,9 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
             if (protocol.equals(AvailableProtocols.REST_CA_MANAGEMENT.getName()) && !isRunningEnterprise()) {
                 available = false;
             }
+            if (protocol.equals(AvailableProtocols.REST_COAP_MANAGEMENT.getName()) && !isRunningEnterprise()) {
+                available = false;
+            }
             if (protocol.equals(AvailableProtocols.REST_CONFIGDUMP.getName()) && !isRunningEnterprise()) {
                 available = false;
             }
@@ -1339,6 +1359,9 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
                 available = false;
             }
             if (protocol.equals(AvailableProtocols.REST_ENDENTITY_MANAGEMENT.getName()) && !isRunningEnterprise()) {
+                available = false;
+            }
+            if (protocol.equals(AvailableProtocols.REST_ENDENTITY_MANAGEMENT_V2.getName()) && !isRunningEnterprise()) {
                 available = false;
             }
             if (protocol.equals(AvailableProtocols.REST_SSH_V1.getName()) && !isRunningEnterprise()) {
@@ -1358,7 +1381,36 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
             return enabled ? getEjbcaWebBean().getText("PC_STATUS_ENABLED") : getEjbcaWebBean().getText("PC_STATUS_DISABLED");
         }
     }
+    
+    public boolean isEnableCustomHeaderRest() {
+        return enableCustomHeaderRest;
+    }
+    
+    public void setEnableCustomHeaderRest(boolean value) {
+        enableCustomHeaderRest = value;
+    }
+    
+    public String getCustomHeaderRestName() {
+        return customHeaderRestName;
+    }
+    
+    public void setCustomHeaderRestName(String value) {
+        customHeaderRestName = value;
+    }
 
+    public void saveProtocolConfigurations() {
+        final AvailableProtocolsConfiguration availableProtocolsConfiguration = getAvailableProtocolsConfiguration();
+        getAvailableProtocolsConfiguration().setCustomHeaderForRestEnabled(enableCustomHeaderRest);
+        getAvailableProtocolsConfiguration().setCustomHeaderForRest(customHeaderRestName);
+        // Save config
+        try {
+            getEjbcaWebBean().getEjb().getGlobalConfigurationSession().saveConfiguration(getAdmin(), availableProtocolsConfiguration);
+        } catch (AuthorizationDeniedException e) {
+            String msg = "Cannot save System Configuration. " + e.getLocalizedMessage();
+            log.info("Administrator '" + getAdmin() + "' " + msg);
+            super.addNonTranslatedErrorMessage(msg);
+        }
+    }
 
     // --------------------------------------------
     //               Extended Key Usage
@@ -1556,8 +1608,8 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
     private GlobalCustomCssConfiguration globalCustomCssConfiguration = null;
     private ListDataModel<RaStyleInfo> raStyleInfos = null;
     private List<RaStyleInfo> raStyleInfosList;
-    private UploadedFile raCssFile = null;
-    private UploadedFile raLogoFile = null;
+    private Part raCssFile = null;
+    private Part raLogoFile = null;
     private Map<String, RaCssInfo> importedRaCssInfos = null;
     private String archiveName = null;
     private String logoName = null;
@@ -1641,12 +1693,12 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
             return;
         }
         logoName = raLogoFile.getName();
-        logoBytes = raLogoFile.getBytes();
+        logoBytes = IOUtils.toByteArray(raLogoFile.getInputStream(), raLogoFile.getSize());     
         addInfoMessage("LOGOIMPORTSUCCESS", logoName);
     }
 
     private void importCssFromFile() throws IOException {
-        final byte[] fileBuffer = raCssFile.getBytes();
+        final byte[] fileBuffer = IOUtils.toByteArray(raCssFile.getInputStream(), raCssFile.getSize()); 
         if (fileBuffer.length == 0) {
             throw new IllegalArgumentException("Empty input file");
         }
@@ -1663,7 +1715,7 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
                 .collect(Collectors.toMap(RaCssInfo::getCssName, Function.identity()));
         if (raCssInfosMap.isEmpty() && raCssFile.getName().endsWith(".css")) {
             // Single file selected (not zip)
-            raCssInfosMap.put(raCssFile.getName(), new RaCssInfo(raCssFile.getBytes(), raCssFile.getName()));
+            raCssInfosMap.put(raCssFile.getName(), new RaCssInfo(fileBuffer, raCssFile.getName()));
             importedFiles.add(raCssFile.getName());
         } else if (raCssInfosMap.isEmpty()) {
             addErrorMessage("CANNOT_PROCESS_ZIP_FILE");
@@ -1686,19 +1738,19 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         saveCustomCssConfiguration();
     }
 
-    public UploadedFile getRaCssFile() {
+    public Part getRaCssFile() {
         return raCssFile;
     }
 
-    public void setRaCssFile(final UploadedFile raCssFile) {
+    public void setRaCssFile(final Part raCssFile) {
         this.raCssFile = raCssFile;
     }
 
-    public UploadedFile getRaLogoFile() {
+    public Part getRaLogoFile() {
         return raLogoFile;
     }
 
-    public void setRaLogoFile(final UploadedFile raLogoFile) {
+    public void setRaLogoFile(final Part raLogoFile) {
         this.raLogoFile = raLogoFile;
     }
 
@@ -2058,41 +2110,35 @@ public class SystemConfigMBean extends BaseManagedBean implements Serializable {
         }
         return eabConfigManager;
     }
-
-    public List<String> getAvailableTabs() {
-        final List<String> availableTabs = new ArrayList<>();
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.SYSTEMCONFIGURATION_VIEW.resource())) {
-            availableTabs.add("Basic Configurations");
-            availableTabs.add("Administrator Preferences");
-            availableTabs.add("Protocol Configuration");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.EKUCONFIGURATION_VIEW.resource())) {
-            availableTabs.add("Extended Key Usages");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource()) && getEjbcaWebBean().isRunningEnterprise()) {
-            availableTabs.add("Trusted OAuth Providers");
-        }
-        if (getEjbcaWebBean().isRunningBuildWithCA()
+    
+    public boolean renderCertificateTransparency() {
+        return getEjbcaWebBean().isRunningBuildWithCA()
                 && authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.SYSTEMCONFIGURATION_VIEW.resource())
-                && CertificateTransparencyFactory.isCTAvailable()) {
-            availableTabs.add("Certificate Transparency Logs");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.CUSTOMCERTEXTENSIONCONFIGURATION_VIEW.resource())) {
-            availableTabs.add("Custom Certificate Extensions");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource())) {
-            availableTabs.add("Custom RA Styles");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource()) && isStatedumpAvailable()) {
-            availableTabs.add("Statedump");
-        }
-        if (authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.SYSTEMCONFIGURATION_VIEW.resource())) {
-            availableTabs.add("External Scripts");
-            availableTabs.add("Configuration Checker");
-            availableTabs.add("External Account Bindings");
-        }
-
-        return availableTabs;
+                && CertificateTransparencyFactory.isCTAvailable();
+    }
+    
+    public boolean renderSystemConfiguration() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.SYSTEMCONFIGURATION_VIEW.resource());
+    }
+    
+    public boolean renderExtendedKeyUsages() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.EKUCONFIGURATION_VIEW.resource());
+    }
+    
+    public boolean renderOAuthProviders() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource()) && getEjbcaWebBean().isRunningEnterprise();
+    }
+    
+    public boolean renderCustomCertificateExtensions() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.CUSTOMCERTEXTENSIONCONFIGURATION_VIEW.resource());
+    }
+    
+    public boolean renderCustomRaStyles() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource());
+    }
+    
+    public boolean renderStatedumpTab() {
+        return authorizationSession.isAuthorizedNoLogging(getAdmin(), StandardRules.ROLE_ROOT.resource()) && isStatedumpAvailable();
     }
 
 }

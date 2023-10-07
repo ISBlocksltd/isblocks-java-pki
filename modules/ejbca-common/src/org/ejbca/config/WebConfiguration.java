@@ -16,13 +16,13 @@ package org.ejbca.config;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.util.StringTools;
 import org.ejbca.util.SlotList;
 import org.ejbca.util.URIUtil;
+
+import com.keyfactor.util.StringTools;
 
 /**
  * This file handles configuration from web.properties
@@ -59,7 +59,7 @@ public class WebConfiguration {
 	 */
 	public static String getHostName() {
 	   
-	    if(!Objects.isNull(System.getenv("HOSTNAME"))){
+	    if(!java.util.Objects.isNull(System.getenv("HOSTNAME"))){
 	        return System.getenv("HOSTNAME");
 	    }else {
 	        return URIUtil.getIPv6CompatibleHostIp(EjbcaConfigurationHolder.getExpandedString(CONFIG_HTTPSSERVERHOSTNAME)); 
@@ -353,6 +353,11 @@ public class WebConfiguration {
         return Boolean.valueOf(EjbcaConfigurationHolder.getString("awskms.cryptotoken.enabled"));
     }
 
+    /** @return true if we have Fortanix DSM Crypto Token enabled in the Admin GUI. */
+    public static boolean isFortanixEnabled(){
+        return Boolean.valueOf(EjbcaConfigurationHolder.getString("fortanix.cryptotoken.enabled"));
+    }
+
     /** @return true if we have SunP11 Crypto Token enabled in the Admin GUI. */
     public static boolean isSunP11Enabled(){
         return !Boolean.FALSE.toString().equalsIgnoreCase(EjbcaConfigurationHolder.getString("sunp11.cryptotoken.enabled")); // default true
@@ -366,6 +371,11 @@ public class WebConfiguration {
     /** @return true if we have P11NG Utimaco CP5 specific Crypto Token functions enabled in the Admin GUI. */
     public static boolean isP11NGUtimacoCP5Enabled(){
         return Boolean.valueOf(EjbcaConfigurationHolder.getString("p11ng.utimacocp5.enabled"));
+    }
+
+    /** @return true if we enabled usage of PQC algorithms (for testing) in the Admin GUI. */
+    public static boolean isPQCEnabled(){
+        return Boolean.valueOf(EjbcaConfigurationHolder.getString("cryptotoken.pqc.enabled"));
     }
 
     public static String getStatedumpTemplatesBasedir() {

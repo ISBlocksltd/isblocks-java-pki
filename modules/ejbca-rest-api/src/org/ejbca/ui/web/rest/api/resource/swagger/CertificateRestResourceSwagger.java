@@ -18,9 +18,10 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.Info;
 import io.swagger.annotations.SwaggerDefinition;
 import io.swagger.annotations.SwaggerDefinition.Scheme;
-import org.cesecore.CesecoreException;
+
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.certificates.ca.CADoesntExistsException;
+import org.cesecore.certificates.certificateprofile.CertificateProfileDoesNotExistException;
 import org.ejbca.core.EjbcaException;
 import org.ejbca.core.ejb.ra.NoSuchEndEntityException;
 import org.ejbca.core.model.approval.ApprovalException;
@@ -42,6 +43,8 @@ import org.ejbca.ui.web.rest.api.io.response.RevokeStatusRestResponse;
 import org.ejbca.ui.web.rest.api.io.response.SearchCertificatesRestResponse;
 import org.ejbca.ui.web.rest.api.resource.BaseRestResource;
 import org.ejbca.ui.web.rest.api.resource.CertificateRestResource;
+
+import com.keyfactor.CesecoreException;
 
 import javax.ejb.Stateless;
 import javax.servlet.http.HttpServletRequest;
@@ -154,7 +157,9 @@ public class CertificateRestResourceSwagger extends CertificateRestResource {
     @PUT
     @Path("/{issuer_dn}/{certificate_serial_number}/revoke")
     @Produces(MediaType.APPLICATION_JSON)
-    @ApiOperation(value = "Revokes the specified certificate", notes = "Revokes the specified certificate", response = RevokeStatusRestResponse.class)
+    @ApiOperation(value = "Revokes the specified certificate",
+                  notes = "Revokes the specified certificate or changes revocation reason for an already revoked certificate",
+                  response = RevokeStatusRestResponse.class)
     public Response revokeCertificate(
             @Context HttpServletRequest requestContext,
             @ApiParam(value = "Subject DN of the issuing CA")
@@ -164,13 +169,18 @@ public class CertificateRestResourceSwagger extends CertificateRestResource {
             @ApiParam(value = "Must be valid RFC5280 reason. One of\n" +
                     " NOT_REVOKED, UNSPECIFIED ,KEY_COMPROMISE,\n" +
                     " CA_COMPROMISE, AFFILIATION_CHANGED, SUPERSEDED, CESSATION_OF_OPERATION,\n" +
-                    " CERTIFICATE_HOLD, REMOVE_FROM_CRL, PRIVILEGES_WITHDRAWN, AA_COMPROMISE")
+                    " CERTIFICATE_HOLD, REMOVE_FROM_CRL, PRIVILEGES_WITHDRAWN, AA_COMPROMISE \n\n" +
+                    " Only KEY_COMPROMISE is allowed for new revocation reason if revocation reason is to be changed.")
             @QueryParam("reason") String reason,
             @ApiParam(value = "ISO 8601 Date string, eg. '2018-06-15T14:07:09Z'")
-            @QueryParam("date") String date)
+            @QueryParam("date") String date,
+            @ApiParam(value = "ISO 8601 Date string, eg. '2018-06-15T14:07:09Z'")
+            @QueryParam("invalidity_date") String invalidityDate)
+
             throws AuthorizationDeniedException, RestException, ApprovalException, RevokeBackDateNotAllowedForProfileException,
-            CADoesntExistsException, AlreadyRevokedException, NoSuchEndEntityException, WaitingForApprovalException {
-        return super.revokeCertificate(requestContext, issuerDN, serialNumber, reason, date);
+            CADoesntExistsException, AlreadyRevokedException, NoSuchEndEntityException, CertificateProfileDoesNotExistException, 
+            WaitingForApprovalException {
+        return super.revokeCertificate(requestContext, issuerDN, serialNumber, reason, date, invalidityDate);
     }
 
     @GET
@@ -193,6 +203,7 @@ public class CertificateRestResourceSwagger extends CertificateRestResource {
 
     @POST
     @Path("/{request_id}/finalize")
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Finalize enrollment",
             notes = "Finalizes enrollment after administrator approval using request Id",

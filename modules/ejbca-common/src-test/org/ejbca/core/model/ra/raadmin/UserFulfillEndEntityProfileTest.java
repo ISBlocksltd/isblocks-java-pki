@@ -13,9 +13,6 @@
 
 package org.ejbca.core.model.ra.raadmin;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import java.text.DateFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,18 +23,22 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 
+import com.keyfactor.util.certificate.DnComponents;
+
 import org.apache.commons.lang.time.FastDateFormat;
 import org.apache.log4j.Logger;
 import org.cesecore.certificates.certificateprofile.CertificateProfile;
 import org.cesecore.certificates.certificateprofile.CertificateProfileConstants;
 import org.cesecore.certificates.endentity.ExtendedInformation;
-import org.cesecore.certificates.util.DnComponents;
 import org.cesecore.config.EABConfiguration;
 import org.ejbca.core.model.SecConst;
 import org.ejbca.core.model.ra.ExtendedInformationFields;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Tests the end entity profile entity bean profile checks only
@@ -115,7 +116,7 @@ public class UserFulfillEndEntityProfileTest {
         int currentSubTest = 1;
         final EndEntityProfile profile = createBasicProfile();
         
-        // Test completely errornous DN
+        // Test completely erroneous DN
         try{ 
           profile.doesUserFulfillEndEntityProfile("username","password","blabla","","","",
                                                    CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, false,
@@ -196,6 +197,41 @@ public class UserFulfillEndEntityProfileTest {
         }catch(EndEntityProfileValidationException e){        	        	
         	log.debug("End Entity Fulfill Profile Test " + (currentSubTest) + " " + e.getMessage() + " = OK");
         }
+        
+        // Test Matter IoT VID and PID
+        try{ 
+          profile.doesUserFulfillEndEntityProfile("username","password","CN=Matter DAC,VID=FFF1,PID=8000","null","","",
+                                                   CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, false,
+                                                   false,false,SecConst.TOKEN_SOFT_BROWSERGEN, TEST_CA_1, null, certProfileEndUser, null);
+          fail("Inproper check of VID and PID value.");
+        }catch(EndEntityProfileValidationException e){                      
+            log.debug("End Entity Fulfill Profile Test " + (currentSubTest) + " " + e.getMessage() + " = OK");
+        }
+        
+        profile.addField(DnComponents.VID);
+        profile.addField(DnComponents.PID);
+        // Should pass now
+        profile.doesUserFulfillEndEntityProfile("username","password","OU=DEP1_1,OU=DEP2_2,CN=Matter DAC,VID=FFF1,PID=8000","null","","",
+                CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, false,
+                false,false,SecConst.TOKEN_SOFT_BROWSERGEN, TEST_CA_1, null, certProfileEndUser, null);
+        
+        // Test uniqueIdentifier and CertificationID
+        try{ 
+          profile.doesUserFulfillEndEntityProfile("username","password","CN=Some Common Name,uniqueIdentifier=N62892,CertificationID=BSI-K-TR-1234-2023","null","","",
+                                                   CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, false,
+                                                   false,false,SecConst.TOKEN_SOFT_BROWSERGEN, TEST_CA_1, null, certProfileEndUser, null);
+          fail("Inproper check of uniqueIdentifier and CertificationID value.");
+        }catch(EndEntityProfileValidationException e){                      
+            log.debug("End Entity Fulfill Profile Test " + (currentSubTest) + " " + e.getMessage() + " = OK");
+        }
+        
+        profile.addField(DnComponents.UNIQUEIDENTIFIER);
+        profile.addField(DnComponents.CERTIFICATIONID);
+        // Should pass now
+        profile.doesUserFulfillEndEntityProfile("username","password","OU=DEP1_1,OU=DEP2_2,CN=Some Common Name,uniqueIdentifier=N62892,CertificationID=BSI-K-TR-1234-2023","null","","",
+                CertificateProfileConstants.CERTPROFILE_FIXED_ENDUSER, false,
+                false,false,SecConst.TOKEN_SOFT_BROWSERGEN, TEST_CA_1, null, certProfileEndUser, null);
+        
         log.trace("<fulfillSubjectDn");
     }
 
@@ -214,6 +250,8 @@ public class UserFulfillEndEntityProfileTest {
         profile.addField(DnComponents.DNSNAME);
         profile.addField(DnComponents.UPN);
         profile.addField(DnComponents.IPADDRESS);
+        
+        profile.setUse(DnComponents.RFC822NAME,0,true);
         
         profile.setRequired(DnComponents.RFC822NAME,0,true);
         profile.setRequired(DnComponents.DNSNAME,0,true);

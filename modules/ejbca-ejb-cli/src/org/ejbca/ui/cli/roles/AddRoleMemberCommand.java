@@ -37,14 +37,14 @@ import org.cesecore.roles.management.RoleSessionRemote;
 import org.cesecore.roles.member.RoleMember;
 import org.cesecore.roles.member.RoleMemberSessionRemote;
 import org.cesecore.util.EjbRemoteHelper;
-import org.cesecore.util.StringTools;
-import org.ejbca.core.ejb.approval.ApprovalSessionRemote;
 import org.ejbca.ui.cli.infrastructure.command.CommandResult;
 import org.ejbca.ui.cli.infrastructure.parameter.Parameter;
 import org.ejbca.ui.cli.infrastructure.parameter.ParameterContainer;
 import org.ejbca.ui.cli.infrastructure.parameter.enums.MandatoryMode;
 import org.ejbca.ui.cli.infrastructure.parameter.enums.ParameterMode;
 import org.ejbca.ui.cli.infrastructure.parameter.enums.StandaloneMode;
+
+import com.keyfactor.util.StringTools;
 
 /**
  * Adds a role member.
@@ -200,11 +200,6 @@ public class AddRoleMemberCommand extends BaseRolesCommand {
             }
             roleMemberSession.persist(getAuthenticationToken(), roleMember);
             getLogger().info("Role member was successfully added.");
-            try {
-                EjbRemoteHelper.INSTANCE.getRemoteSession(ApprovalSessionRemote.class).updateApprovalRights(getAuthenticationToken(), role.getRoleId(), roleName);
-            } catch (AuthorizationDeniedException e) {
-                getLogger().warn("Approval rights were not updated after adding role member due to insufficient rights. In most cases this is not a big problem.");
-            }
         } catch (AuthorizationDeniedException e) {
             getLogger().error("CLI user not authorized to edit role");
             return CommandResult.AUTHORIZATION_FAILURE;

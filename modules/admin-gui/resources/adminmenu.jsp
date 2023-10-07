@@ -38,7 +38,7 @@ org.ejbca.util.HTMLTools
        final String RA_EDITUSERDATASOURCESLINK =  ejbcawebbean.getBaseUrl() + globalconfiguration.getRaPath()+"/edituserdatasources/userdatasourcespage.xhtml";
        final String RA_EDITPROFILESLINK      =  ejbcawebbean.getBaseUrl() + globalconfiguration.getRaPath()+"/editendentityprofiles/editendentityprofiles.xhtml";
        final String RA_ADDENDENTITYLINK      =  ejbcawebbean.getBaseUrl() + globalconfiguration.getRaPath()+"/addendentity.jsp";
-       final String RA_LISTENDENTITIESLINK   =  ejbcawebbean.getBaseUrl() + globalconfiguration.getRaPath()+"/listendentities.jsp";
+       final String RA_LISTENDENTITIESLINK   =  ejbcawebbean.getBaseUrl() + globalconfiguration.getRaPath()+"/searchendentities.xhtml";
        
        final String AUDIT_LINK                 =  ejbcawebbean.getAdminWebBaseUrl() + "audit/search.xhtml";
        final String CONFIGURATION_LINK       =  ejbcawebbean.getBaseUrl() + globalconfiguration.getConfigPath()  + "/systemconfiguration.xhtml";
@@ -46,6 +46,7 @@ org.ejbca.util.HTMLTools
        final String CMPCONFIGURATION_LINK    =  ejbcawebbean.getBaseUrl() + globalconfiguration.getConfigPath() + "/cmpaliases.xhtml";
        
        final String INTERNALKEYBINDING_LINK  = ejbcawebbean.getAdminWebBaseUrl() + "keybind/keybindings.xhtml";
+       final String OCSP_RESPONDER_LINK  = ejbcawebbean.getAdminWebBaseUrl() + "keybind/ocspresponders.xhtml";
        final String SERVICES_LINK            = ejbcawebbean.getAdminWebBaseUrl() + "services/listservices.xhtml";
        final String PEERCONNECTOR_LINK       = ejbcawebbean.getAdminWebBaseUrl() + "peerconnector/peerconnectors.xhtml";
        
@@ -57,7 +58,6 @@ org.ejbca.util.HTMLTools
        
        final String ESTCONFIGURATION_LINK    =  ejbcawebbean.getBaseUrl() + globalconfiguration.getConfigPath() + "/estconfigurations.xhtml";
        
-	   final String PUBLICWEB_LINK          = ejbcawebbean.getBaseUrl();
 	   final String RAWEB_LINK          = ejbcawebbean.getBaseUrl() + "ra/";
        
        final String MYPREFERENCES_LINK     =  ejbcawebbean.getAdminWebBaseUrl() + "mypreferences.xhtml";
@@ -81,6 +81,7 @@ org.ejbca.util.HTMLTools
   boolean htheaderprinted     =false;
   boolean logheaderprinted    =false;
   boolean systemheaderprinted =false;
+  boolean vaheaderprinted     =false;
   boolean configheaderprinted = false;
 
 
@@ -91,7 +92,7 @@ org.ejbca.util.HTMLTools
 <% } else { %>
     <div id="header">
         <div id="banner">
-            <a href="<%= ejbcawebbean.getAdminWebBaseUrl() %>"><img src="<%=ejbcawebbean.getAdminWebBaseUrl() + ejbcawebbean.getImagePath("banner_"+InternalConfiguration.getAppNameLower()+"-admin.png")%>" alt="<%= HTMLTools.htmlescape(InternalConfiguration.getAppNameCapital()) %>" /></a>
+            <a href="<%= ejbcawebbean.getAdminWebBaseUrl() %>"><img src="<%=ejbcawebbean.getAdminWebBaseUrl() + ejbcawebbean.getImagePath(ejbcawebbean.getEditionFolder() + "/keyfactor-"+ InternalConfiguration.getAppNameLower() +"-logo.png")%>" alt="<%= HTMLTools.htmlescape(InternalConfiguration.getAppNameCapital()) %>" /></a>
         </div>
 	</div>
 <% } %>
@@ -220,7 +221,19 @@ org.ejbca.util.HTMLTools
      out.write("</ul></li>"); 
    }
 %>
+        <%
+   // --------------------------------------------------------------------------
+   // VA FUNCTIONS
+%>
 
+        <%
+     if(ejbcawebbean.isAuthorizedNoLogSilent(INTERNALKEYBINDING_RESOURCE)){
+       if(!vaheaderprinted){
+         out.write("<li id=\"cat7\" class=\"section\"><strong>" + ejbcawebbean.getText("NAV_VAFUNCTIONS")+"</strong><ul>");
+         vaheaderprinted=true;
+         }  %>
+    <li><a href="<%= OCSP_RESPONDER_LINK %>"><%=ejbcawebbean.getText("NAV_OCSPRESPONDERS") %></a></li>
+        <% } %>
 <%
    // --------------------------------------------------------------------------
    // SUPERVISION FUNCTIONS
@@ -258,11 +271,6 @@ org.ejbca.util.HTMLTools
    }
 %>
 
-
-<%
-   // --------------------------------------------------------------------------
-   // SYSTEM FUNCTIONS
-%>
 
 <%
    // If authorized to edit authorizations then display related links.
@@ -414,10 +422,6 @@ if(configheaderprinted){
 		</li>
 <% } %>
 
-<% if (!globalconfiguration.getHidePublicWeb() && ejbcawebbean.isRunningBuildWithCA()) { %>
-		<li id="cat9"><a href="<%= PUBLICWEB_LINK %>" target="_ejbcapublicweb" rel="noopener noreferer"><%=ejbcawebbean.getText("PUBLICWEB") %></a>
-		</li>
-<% } %>
 
 <% if (ejbcawebbean.isHelpEnabled()) { %>
 		<li id="cat10"><a href="<%= ejbcawebbean.getHelpBaseURI() %>/index.html" target="<%= GlobalConfiguration.DOCWINDOW %>" rel="noopener noreferer"

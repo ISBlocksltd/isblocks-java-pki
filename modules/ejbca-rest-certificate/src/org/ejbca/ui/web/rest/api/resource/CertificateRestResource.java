@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.ejb.EJB;
@@ -45,28 +46,20 @@ import javax.xml.bind.DatatypeConverter;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.CesecoreException;
 import org.cesecore.authentication.tokens.AuthenticationToken;
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.certificates.ca.CADoesntExistsException;
 import org.cesecore.certificates.certificate.CertificateConstants;
 import org.cesecore.certificates.certificate.CertificateStatus;
 import org.cesecore.certificates.certificate.certextensions.CertificateExtensionException;
-import org.cesecore.certificates.certificateprofile.CertificateProfileSession;
-import org.cesecore.certificates.certificateprofile.CertificateProfileSessionLocal;
+import org.cesecore.certificates.certificateprofile.CertificateProfileDoesNotExistException;
 import org.cesecore.certificates.crl.RevocationReasons;
 import org.cesecore.certificates.endentity.EndEntityConstants;
 import org.cesecore.certificates.endentity.EndEntityInformation;
 import org.cesecore.certificates.endentity.ExtendedInformation;
-import org.cesecore.certificates.util.AlgorithmTools;
-import org.cesecore.keys.util.KeyTools;
-import org.cesecore.util.CertTools;
-import org.cesecore.util.EJBTools;
-import org.cesecore.util.StringTools;
 import org.ejbca.core.EjbcaException;
+import org.ejbca.core.ejb.dto.CertRevocationDto;
 import org.ejbca.core.ejb.ra.NoSuchEndEntityException;
-import org.ejbca.core.ejb.ra.raadmin.EndEntityProfileSession;
-import org.ejbca.core.ejb.ra.raadmin.EndEntityProfileSessionLocal;
 import org.ejbca.core.model.InternalEjbcaResources;
 import org.ejbca.core.model.SecConst;
 import org.ejbca.core.model.TokenDownloadType;
@@ -99,6 +92,13 @@ import org.ejbca.ui.web.rest.api.io.response.PaginationRestResponseComponent;
 import org.ejbca.ui.web.rest.api.io.response.RevokeStatusRestResponse;
 import org.ejbca.ui.web.rest.api.io.response.SearchCertificatesRestResponse;
 
+import com.keyfactor.CesecoreException;
+import com.keyfactor.util.CertTools;
+import com.keyfactor.util.EJBTools;
+import com.keyfactor.util.StringTools;
+import com.keyfactor.util.crypto.algorithm.AlgorithmTools;
+import com.keyfactor.util.keys.KeyTools;
+
 
 /**
  * JAX-RS resource handling certificate-related requests.
@@ -115,12 +115,6 @@ public class CertificateRestResource extends BaseRestResource {
 
     @EJB
     private RaMasterApiProxyBeanLocal raMasterApi;
-
-    @EJB
-    private CertificateProfileSessionLocal certificateProfileSession;
-
-    @EJB
-    private EndEntityProfileSessionLocal endEntityProfileSession;
 
     public Response enrollPkcs10Certificate(final HttpServletRequest requestContext,
                                             final EnrollCertificateRestRequest enrollCertificateRestRequest)
@@ -240,23 +234,23 @@ public class CertificateRestResource extends BaseRestResource {
      *                       CA_COMPROMISE, AFFILIATION_CHANGED, SUPERSEDED, CESSATION_OF_OPERATION,
      *                       CERTIFICATE_HOLD, REMOVE_FROM_CRL, PRIVILEGES_WITHDRAWN, AA_COMPROMISE
      * @param date           revocation date (optional). Must be valid ISO8601 date string
+     * @param invalidityDate invalidity date (optional). Must be valid ISO8601 date string
      * @return JSON representation of serialNr, issuerDn, revocation status, date and optional message.
+     * @throws CertificateProfileDoesNotExistException 
+     * @throws IllegalArgumentException 
      */
     public Response revokeCertificate(
             final HttpServletRequest requestContext,
             final String issuerDN,
             final String serialNumber,
             final String reason,
-            final String date)
+            final String date,
+            final String invalidityDate)
             throws AuthorizationDeniedException, RestException, ApprovalException, RevokeBackDateNotAllowedForProfileException,
-            CADoesntExistsException, AlreadyRevokedException, NoSuchEndEntityException, WaitingForApprovalException {
+            CADoesntExistsException, AlreadyRevokedException, NoSuchEndEntityException, WaitingForApprovalException, IllegalArgumentException, CertificateProfileDoesNotExistException {
         final AuthenticationToken admin = getAdmin(requestContext, false);
         RevocationReasons reasons = RevocationReasons.getFromCliValue(reason);
         // TODO Replace with @ValidRevocationReason
-        if (reasons == null) {
-            throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid revocation reason.");
-        }
-        final int revocationReason = reasons.getDatabaseValue();
         final BigInteger serialNr;
         try {
             serialNr = StringTools.getBigIntegerFromHexString(serialNumber);
@@ -264,36 +258,52 @@ public class CertificateRestResource extends BaseRestResource {
             throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid serial number format. Should be "
                     + "HEX encoded (optionally with '0x' prefix) e.g. '0x10782a83eef170d4'");
         }
-        Date revocationDate;
-        if (date != null) {
-            revocationDate = getValidatedRevocationDate(date);
+        final int revocationReason;
+        if (reasons != null) {
+            revocationReason = reasons.getDatabaseValue();
         } else {
-            revocationDate = new Date();
+            final CertificateStatus existingStatus = raMasterApi.getCertificateStatus(admin, issuerDN, serialNr);
+            if (!existingStatus.isRevoked()) {
+                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid revocation reason.");
+            } else if (invalidityDate != null) {
+                revocationReason = existingStatus.revocationReason;
+            } else {
+                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Invalidity date or revocation reason missing.");  
+            }
         }
-        raMasterApi.revokeCert(admin, serialNr, revocationDate, issuerDN, revocationReason, false);
+        final Date validatedInvalidityDate = getValidatedDate(invalidityDate);
+        CertRevocationDto certRevocationMetadata = new CertRevocationDto(issuerDN, serialNumber); 
+        certRevocationMetadata.setInvalidityDate(validatedInvalidityDate);
+        certRevocationMetadata.setRevocationDate(getValidatedDate(date));
+        certRevocationMetadata.setReason(revocationReason);
+        certRevocationMetadata.setCheckDate(true);
+        raMasterApi.revokeCertWithMetadata(admin, certRevocationMetadata);
+        final CertificateStatus certificateStatus = raMasterApi.getCertificateStatus(admin, issuerDN, serialNr);
+        final Date revocationDate = certificateStatus.isRevoked() ? certificateStatus.revocationDate : null;
 
         final RevokeStatusRestResponse result = RevokeStatusRestResponse.builder().
                 serialNumber(serialNumber).
                 issuerDn(issuerDN).
                 revocationDate(revocationDate).
-                revoked(true).
+                revoked(certificateStatus.isRevoked()).
                 revocationReason(reason).
+                invalidityDate(validatedInvalidityDate).
                 message("Successfully revoked").
                 build();
         return Response.ok(result).build();
     }
 
     // TODO Replace with @ValidRevocationDate annotation
-    private Date getValidatedRevocationDate(String sDate) throws RestException {
+    private Date getValidatedDate(String sDate) throws RestException {
         Date date = null;
         if (sDate != null) {
             try {
                 date = DatatypeConverter.parseDateTime(sDate).getTime();
             } catch (IllegalArgumentException e) {
-                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), intres.getLocalizedMessage("ra.bad.date", sDate));
+                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), intres.getLocalizedMessage("ra.bad.date.generic", sDate));
             }
             if (date.after(new Date())) {
-                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Revocation date in the future: '" + sDate + "'.");
+                throw new RestException(Response.Status.BAD_REQUEST.getStatusCode(), "Date in the future: '" + sDate + "'.");
             }
         }
         return date;
@@ -314,7 +324,7 @@ public class CertificateRestResource extends BaseRestResource {
                 .setNumberOfResults(count - processedResults)
                 .build();
         CertificatesRestResponse certificatesRestResponse = new CertificatesRestResponse(
-                CertificatesRestResponse.converter().toRestResponses(new ArrayList<Certificate>(expiringCertificates)));
+                CertificatesRestResponse.converter().toRestResponses(new ArrayList<>(expiringCertificates)));
         ExpiringCertificatesRestResponse response = new ExpiringCertificatesRestResponse(paginationRestResponseComponent, certificatesRestResponse);
         return Response.ok(response).build();
     }
@@ -382,7 +392,7 @@ public class CertificateRestResource extends BaseRestResource {
             byte[] certificateBytes = raMasterApi.createCertificate(admin, endEntityInformation); // X509Certificate
             Certificate certificate = CertTools.getCertfromByteArray(certificateBytes, Certificate.class);
             if (responseFormat.equals(TokenDownloadType.PEM.name())) {
-                byte[] pemBytes = CertTools.getPemFromCertificateChain(Collections.singletonList((Certificate) certificate));
+                byte[] pemBytes = CertTools.getPemFromCertificateChain(Collections.singletonList(certificate));
                 response = CertificateRestResponse.builder().setCertificate(pemBytes).
                         setSerialNumber(CertTools.getSerialNumberAsString(certificate)).setResponseFormat("PEM").build();
             } else {
@@ -428,9 +438,18 @@ public class CertificateRestResource extends BaseRestResource {
     ) throws AuthorizationDeniedException, RestException, CertificateEncodingException {
         final AuthenticationToken authenticationToken = getAdmin(requestContext, true);
         validateObject(searchCertificatesRestRequest);
-
-        authorizeSearchCertificatesRestRequestReferences(authenticationToken, raMasterApi, searchCertificatesRestRequest);
-        final SearchCertificatesRestResponse searchCertificatesRestResponse = searchCertificates(authenticationToken, searchCertificatesRestRequest, certificateProfileSession, endEntityProfileSession);
+        
+        Map<Integer, String> availableEndEntityProfiles = 
+                CertificateRestResourceUtil.loadAuthorizedEndEntityProfiles(authenticationToken, raMasterApi);
+        Map<Integer, String> availableCertificateProfiles = 
+                CertificateRestResourceUtil.loadAuthorizedCertificateProfiles(authenticationToken, raMasterApi);
+        Map<Integer, String> availableCAs = 
+                CertificateRestResourceUtil.loadAuthorizedCAs(authenticationToken, raMasterApi);
+        authorizeSearchCertificatesRestRequestReferences(
+                authenticationToken, raMasterApi, searchCertificatesRestRequest,
+                availableEndEntityProfiles, availableCertificateProfiles, availableCAs);
+        final SearchCertificatesRestResponse searchCertificatesRestResponse = 
+                searchCertificates(authenticationToken, searchCertificatesRestRequest, availableEndEntityProfiles, availableCertificateProfiles);
         return Response.ok(searchCertificatesRestResponse).build();
     }
 
@@ -446,11 +465,11 @@ public class CertificateRestResource extends BaseRestResource {
     private SearchCertificatesRestResponse searchCertificates(
             final AuthenticationToken authenticationToken,
             final SearchCertificatesRestRequest searchCertificatesRestRequest,
-            final CertificateProfileSession certificateProfileSession,
-            final EndEntityProfileSession endEntityProfileSession
+            Map<Integer, String> availableEndEntityProfiles,
+            Map<Integer, String> availableCertificateProfiles
     ) throws RestException, CertificateEncodingException {
         final RaCertificateSearchRequest raCertificateSearchRequest = SearchCertificatesRestRequest.converter().toEntity(searchCertificatesRestRequest);
         final RaCertificateSearchResponse raCertificateSearchResponse = raMasterApi.searchForCertificates(authenticationToken, raCertificateSearchRequest);
-        return SearchCertificatesRestResponse.converter().toRestResponse(raCertificateSearchResponse, certificateProfileSession, endEntityProfileSession);
+        return SearchCertificatesRestResponse.converter().toRestResponse(raCertificateSearchResponse, availableEndEntityProfiles, availableCertificateProfiles);
     }
 }
