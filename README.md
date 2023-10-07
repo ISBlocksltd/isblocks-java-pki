@@ -2,35 +2,30 @@
 
 The ISB CA is a separately maintained fork of the EJBCA Community CA maintanined by IS Blocks Ltd
 
-EJBCA is developed in Java and runs on a JVM such as OpenJDK, available on most platforms such as Linux and Windows although the recommended stack for the ISB CA is
-* JDK 11
+The recommended stack for the ISB CA is: 
+* JDK 17
 * Ubuntu 18, 20 or 22
 * Maria DB
-* KeyCloak 18
+* KeyCloak 22
+
+In addition to the rich community features the ISB CA offers the following: 
+* External VA support through ISB Apache Kafka plugin 
+* Support for ED25519 algorithms 
+* Integrity protected audit logging
 
 ## Get started
 
-To get started with **ISB CA**, clone **[ejbca-ce](https://github.com/Keyfactor/ejbca-ce)** and install it, see **[EJBCA Installation](https://doc.primekey.com/ejbca/ejbca-installation)**.
+To get started with **ISB CA**, clone **[isblocks-java-pki](https://github.com/ISBlocksltd/isblocks-java-pki.git)** and install it, see **[EJBCA Installation](https://doc.primekey.com/ejbca/ejbca-installation)**.
 
 
-In addition to the instructions above, one is required to export the HOSTNAME variable on the Linux system.
+In addition to the instructions above, the EJBCA_HOSTNAME and EJBCA_PORTNUMBER are requried variables 
 
 For example:
 
-HOSTNAME=isbca01.isblocks.com
+EJBCA_HOSTNAME=isbca01.isblocks.com
+EJBCA_PORT=443
 
-Where the HOSTNAME represents the actual FQDN where the CA can be reached.
-
-## Community Support
-
-In our Community we welcome contributions. The Community software is open source and community supported, there is no support SLA, but a helpful best-effort Community.
-
-* To report a problem or suggest a new feature, use the **[Issues](../../issues)** tab.
-* If you want to contribute actual bug fixes or proposed enhancements, use the **[Pull requests](../../pulls)** tab.
-* Ask the community for ideas: **[EJBCA Discussions](https://github.com/Keyfactor/ejbca-ce/discussions)**.
-* Read more in our documentation: **[EJBCA Documentation](https://doc.primekey.com/ejbca)**.
-* See release information: **[EJBCA Release information](https://doc.primekey.com/ejbca/ejbca-release-information)**.
-* Read more on the open source project website: **[EJBCA website](https://www.ejbca.org/)**.
+Where the EJBCA_HOSTNAME represents the actual FQDN where the CA can be reached and the EJBCA_PORTNUMBER represents the HTTPS port number. 
 
 ## Commercial Support
 Commercial support is available from IS Blocks Ltd. Contact us for more details
